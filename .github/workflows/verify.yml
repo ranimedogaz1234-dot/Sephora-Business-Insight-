@@ -40,4 +40,5 @@ jobs:
           npm ci
           npm audit --package-lock-only
           npm run typecheck
+          npm test
           npm run build
