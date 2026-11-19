@@ -1,6 +1,17 @@
 # Sephora Business Insight
 
-Sephora Business Insight is a business intelligence project for exploring Sephora’s catalog and customer reviews. The startup screen verifies the connection to FastAPI and the presence of the six local source files.
+Sephora Business Insight is a business intelligence dashboard for exploring Sephora’s catalog and customer reviews, built as a university project.
+
+## Pages
+
+| Page | What it shows |
+| --- | --- |
+| **Dashboard** (`/`) | KPI cards (products, reviews, average rating, brands), products by category (donut), rating distribution, review activity over time (monthly/yearly), top 10 most reviewed products and top brands by reviews |
+| **Products** (`/products`) | Searchable catalogue (name or brand), category filter, six sort orders, pagination |
+| **Reviews** (`/reviews`) | Review KPIs, star-rating donut, review trend and most reviewed products for the selected category, year and rating, plus customer review cards sorted by recency, helpfulness or rating |
+| **About** (`/about`) | Project goal, dataset, technologies and contributors |
+
+Every figure comes from the dataset through the API; nothing is hard-coded. Each chart has hover tooltips and a hidden data table for screen readers, and the layout adapts from phones to wide screens.
 
 ## Run locally
 
@@ -26,7 +37,7 @@ npm ci
 npm run dev -- --webpack --hostname localhost --port 3011
 ```
 
-Open [the startup screen](http://localhost:3011) and [the health endpoint](http://127.0.0.1:8011/health). Use `frontend/.env.local` to set a different `SEPHORA_API_URL` if needed.
+Open [the dashboard](http://localhost:3011) and [the health endpoint](http://127.0.0.1:8011/health). Use `frontend/.env.local` to set a different `SEPHORA_API_URL` if needed.
 
 ## Architecture
 
@@ -64,4 +75,12 @@ cd backend
 ..\.venv\Scripts\python.exe -m pytest
 ```
 
-GitHub Actions runs the repository scan, dependency audits, these tests, the frontend type check and the production build on every push and pull request.
+The frontend tests (Vitest and Testing Library) cover formatting, URL filters, chart preparation and the main components.
+
+```powershell
+cd frontend
+npm test
+npm run typecheck
+```
+
+GitHub Actions runs the repository scan, dependency audits, the backend and frontend tests, the frontend type check and the production build on every push and pull request.
