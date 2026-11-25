@@ -1,9 +1,52 @@
 @import "tailwindcss";
 
+/*
+ * Sephora-inspired palette. White dominates; soft pink is for highlights only,
+ * burgundy for emphasis, active navigation and data. Elegant pink (#E8A0B4) is
+ * too light for text on white, so it is only used for fills and accents.
+ */
 @theme {
   --color-blush: #FCEEF2;
   --color-rose: #E8A0B4;
   --color-burgundy: #800F35;
+  --color-burgundy-dark: #5F0B27;
   --color-surface: #F7F7F8;
   --color-charcoal: #29252A;
+  --color-muted: #6E6870;
+  --color-line: #EDE9EE;
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-playfair);
+
+  --shadow-card: 0 1px 2px rgb(41 37 42 / 0.04), 0 8px 24px -12px rgb(128 15 53 / 0.12);
+}
+
+html,
+body {
+  background: #ffffff;
+  color: var(--color-charcoal);
+}
+
+::selection {
+  background: var(--color-blush);
+  color: var(--color-burgundy-dark);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-burgundy);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.recharts-wrapper *:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

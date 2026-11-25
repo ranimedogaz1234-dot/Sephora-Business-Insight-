@@ -31,6 +31,8 @@ ASSIGNMENT = re.compile(
     r"""(?im)^[ \t]*(?:export[ \t]+)?["']?([A-Z0-9_.-]*(?:API_KEY|ACCESS_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)[A-Z0-9_.-]*)["']?[ \t]*[:=][ \t]*(.*)$"""
 )
 SAFE_PLACEHOLDERS = {"", "your_key_here", "your_token_here", "replace_me", "changeme", "example", "placeholder"}
+# A dependency version range such as "^4.0.0" (e.g. the npm package "js-tokens" in package-lock.json).
+VERSION_RANGE = re.compile(r"^(?:[\^~]\d+(?:\.\d+){0,2}|\d+\.\d+(?:\.\d+)?)(?:[-+][0-9A-Za-z.-]+)?$")
 
 
 def git(*args: str) -> bytes:
@@ -71,6 +73,8 @@ def findings(blob: bytes):
         if match.group(1).lower() == "persist-credentials" and value == "false":
             continue
         if value.lower() in SAFE_PLACEHOLDERS or value.startswith(("${", "$env:", "os.getenv(", "process.env.")):
+            continue
+        if VERSION_RANGE.match(value):
             continue
         yield "possible literal credential assignment"
         break
