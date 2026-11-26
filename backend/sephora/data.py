@@ -31,7 +31,7 @@ REVIEW_FILES = (
     "reviews_1250-end.csv",
 )
 FILES = (PRODUCT_FILE, *REVIEW_FILES)
-CACHE_VERSION = 2  # bump whenever the prepared columns change
+CACHE_VERSION = 3  # bump whenever the prepared columns change
 
 PRODUCT_COLUMNS = {
     "product_id": "string",
@@ -50,6 +50,17 @@ PRODUCT_COLUMNS = {
     "online_only": "int64",
     "out_of_stock": "int64",
     "sephora_exclusive": "int64",
+    # Descriptive attributes, shown on the product details page.
+    "size": "string",
+    "variation_type": "string",
+    "variation_value": "string",
+    "variation_desc": "string",
+    "value_price_usd": "float64",
+    "child_count": "int64",
+    "child_min_price": "float64",
+    "child_max_price": "float64",
+    "highlights": "string",
+    "ingredients": "string",
 }
 PRODUCT_FLAGS = ("limited_edition", "new", "online_only", "out_of_stock", "sephora_exclusive")
 REVIEW_COLUMNS = {

@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Path as PathParam
 from fastapi.responses import JSONResponse
 
 ROOT = Path(__file__).resolve().parent
@@ -199,6 +200,17 @@ def products_summary(filters: ProductFilterParams):
 def products_options():
     """Brands, subcategories, listing flags and the price range for the Products filters."""
     return catalogue.product_options(get_dataset())
+
+
+# Registered after /summary and /options so those paths are not read as product IDs.
+@app.get("/api/products/{product_id}")
+def product_details(product_id: Annotated[str, PathParam(pattern=catalogue.PRODUCT_ID)]):
+    """One product: catalogue attributes, indicators, review statistics when the review files
+    contain it (Skincare only), and related products."""
+    details = catalogue.product_details(get_dataset(), product_id)
+    if details is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return details
 
 
 # ----------------------------------------------------------------------------- reviews
