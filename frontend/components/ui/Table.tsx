@@ -11,7 +11,7 @@ export function DataTable({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
+    <div className="relative overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
       <table className="w-full text-sm" style={{ minWidth }}>
         <caption className="sr-only">{caption}</caption>
         {children}

@@ -1,6 +1,7 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { CircleAlert, SearchX } from "lucide-react";
+import { ArrowUpRight, CircleAlert, SearchX } from "lucide-react";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
@@ -40,11 +41,13 @@ interface KpiCardProps {
   note?: string;
   icon: LucideIcon;
   accent?: boolean;
+  /** Makes the whole card a link to the page that explains the figure. */
+  href?: string;
 }
 
-export function KpiCard({ label, value, note, icon: Icon, accent = false }: KpiCardProps) {
-  return (
-    <Card className={accent ? "bg-gradient-to-br from-white to-blush/70" : ""}>
+export function KpiCard({ label, value, note, icon: Icon, accent = false, href }: KpiCardProps) {
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium text-muted">{label}</p>
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blush text-burgundy">
@@ -53,7 +56,19 @@ export function KpiCard({ label, value, note, icon: Icon, accent = false }: KpiC
       </div>
       <p className="mt-3 text-3xl font-semibold tracking-tight text-charcoal sm:text-4xl">{value}</p>
       {note && <p className="mt-2 text-xs text-muted">{note}</p>}
-    </Card>
+      {href && (
+        <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-burgundy">
+          View details <ArrowUpRight aria-hidden className="h-3.5 w-3.5" />
+        </span>
+      )}
+    </>
+  );
+  const cls = `min-w-0 rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6 ${accent ? "bg-gradient-to-br from-white to-blush/70" : ""}`;
+  if (!href) return <section className={cls}>{body}</section>;
+  return (
+    <Link href={href} aria-label={`${label}: ${value}. View details`} className={`${cls} block transition hover:-translate-y-0.5 hover:border-rose`}>
+      {body}
+    </Link>
   );
 }
 
