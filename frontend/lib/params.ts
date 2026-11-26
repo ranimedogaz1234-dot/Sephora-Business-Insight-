@@ -196,3 +196,25 @@ export function parseCategoryParams(sp: SearchParams, paths: Record<string, stri
     sort: sort && sort in CATEGORY_METRICS ? (sort as CategoryMetric) : "products",
   };
 }
+
+export const REVIEWER_ATTRIBUTES = {
+  skin_type: "Skin type",
+  skin_tone: "Skin tone",
+  eye_color: "Eye colour",
+  hair_color: "Hair colour",
+} as const;
+export type AttributeKey = keyof typeof REVIEWER_ATTRIBUTES;
+
+export interface CustomerParams {
+  subcategory?: string;
+  attribute: AttributeKey;
+}
+
+export function parseCustomerParams(sp: SearchParams, options: FilterOptions): CustomerParams {
+  const subcategory = one(sp.subcategory);
+  const attribute = one(sp.attribute);
+  return {
+    subcategory: subcategory && options.review_subcategories.some((s) => s.name === subcategory) ? subcategory : undefined,
+    attribute: attribute && attribute in REVIEWER_ATTRIBUTES ? (attribute as AttributeKey) : "skin_type",
+  };
+}

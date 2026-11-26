@@ -281,6 +281,47 @@ export interface CategoryAnalytics {
   min_reviews_for_ranking: number;
 }
 
+export type ReviewerAttribute = "skin_type" | "skin_tone" | "eye_color" | "hair_color";
+
+export interface AttributeGroup {
+  key: string;
+  label: string;
+  /** Reviews (not people) that gave this answer. */
+  count: number;
+  share: number;
+  average_rating: number | null;
+  recommend_rate: number | null;
+  positive_share: number | null;
+  negative_share: number | null;
+  /** Share of 1★..5★ reviews within the group. */
+  rating_shares: (number | null)[];
+}
+
+export interface CustomerSummary {
+  subcategory: string | null;
+  reviews: number;
+  average_rating: number | null;
+  recommend_rate: number | null;
+  attributes: { attribute: ReviewerAttribute; name: string; answered: number; coverage: number | null; groups: AttributeGroup[] }[];
+  activity: { distinct_reviewer_ids: number; bands: { label: string; reviewers: number; reviews: number }[] };
+  total_reviews: number;
+}
+
+export interface CustomerPreferences {
+  attribute: ReviewerAttribute;
+  name: string;
+  min_group_reviews_for_product: number;
+  min_subcategory_reviews: number;
+  groups: {
+    key: string;
+    label: string;
+    count: number;
+    average_rating: number | null;
+    subcategories: { name: string; reviews: number; share: number; lift: number }[];
+    top_rated: { product_id: string; product_name: string; brand_name: string; reviews: number; average_rating: number }[];
+  }[];
+}
+
 export interface ProductOptions {
   brands: NamedCount[];
   subcategories: { category: string; name: string; count: number }[];
@@ -402,6 +443,8 @@ export const api = {
   productSummary: (q: Query) => get<ProductSummary>("/api/products/summary", q),
   productOptions: () => get<ProductOptions>("/api/products/options"),
   categoryAnalytics: (q: Query) => get<CategoryAnalytics>("/api/category-analytics", q),
+  customers: (q: Query) => get<CustomerSummary>("/api/customers", q),
+  customerPreferences: (q: Query) => get<CustomerPreferences>("/api/customers/preferences", q),
   brands: (q: Query) => get<Page<BrandRow>>("/api/brands", q),
   brandSummary: (q: Query) => get<BrandSummary>("/api/brands/summary", q),
   brandOptions: () => get<{ brand_id: number; brand_name: string; products: number }[]>("/api/brands/options"),
