@@ -81,6 +81,8 @@ export interface Page<T> {
   total_pages: number;
 }
 
+export type ProductFlag = "new" | "exclusive" | "online_only" | "limited_edition" | "on_sale" | "out_of_stock";
+
 export interface ProductRow {
   product_id: string;
   product_name: string;
@@ -88,6 +90,7 @@ export interface ProductRow {
   category: string;
   subcategory: string;
   price: number;
+  sale_price: number | null;
   /** Sephora's catalogue rating. */
   rating: number | null;
   /** Sephora's catalogue review count (not the review rows). */
@@ -95,6 +98,45 @@ export interface ProductRow {
   loves: number;
   /** Rows in the review files (Skincare only). */
   review_count: number;
+  /** Catalogue rating minus the mean rating of the product's primary category. */
+  rating_vs_category: number | null;
+  /** Share of products in the same primary category with fewer loves (0–1). */
+  loves_percentile: number | null;
+  flags: ProductFlag[];
+}
+
+export interface Bucket {
+  label: string;
+  count: number;
+}
+
+export interface ProductSummary {
+  total: number;
+  brands: number;
+  categories: number;
+  median_price: number | null;
+  average_price: number | null;
+  min_price: number | null;
+  max_price: number | null;
+  average_rating: number | null;
+  rated: number;
+  total_loves: number;
+  with_reviews_in_dataset: number;
+  flags: Record<string, number>;
+  price_histogram: Bucket[];
+  rating_histogram: Bucket[];
+  top_brands: { brand_name: string; products: number; average_rating: number | null; loves: number }[];
+  category_split: NamedCount[];
+  best_rated: ProductRow[];
+  most_loved: ProductRow[];
+  min_reviews_for_ranking: number;
+}
+
+export interface ProductOptions {
+  brands: NamedCount[];
+  subcategories: { category: string; name: string; count: number }[];
+  flags: { key: string; label: string }[];
+  price_range: [number, number];
 }
 
 export interface ReviewSummary {
@@ -205,6 +247,8 @@ export const api = {
   observations: (category?: string) => get<Observation[]>("/api/observations", { category }),
   filters: () => get<FilterOptions>("/api/filters"),
   products: (q: Query) => get<Page<ProductRow>>("/api/products", q),
+  productSummary: (q: Query) => get<ProductSummary>("/api/products/summary", q),
+  productOptions: () => get<ProductOptions>("/api/products/options"),
   reviewSummary: (q: Query) => get<ReviewSummary>("/api/reviews/summary", q),
   reviews: (q: Query) => get<Page<ReviewRow>>("/api/reviews", q),
 };
