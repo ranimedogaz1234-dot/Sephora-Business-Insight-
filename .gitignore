@@ -45,3 +45,5 @@ __pycache__/
 *.tsbuildinfo
 next-env.d.ts
 *.log
+# Written by `next dev` on every start
+frontend/AGENTS.md

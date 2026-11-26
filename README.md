@@ -15,7 +15,7 @@ Every figure comes from the dataset through the API; nothing is hard-coded. Each
 
 ## Run locally
 
-Use Python 3.12, Node.js 22, and Git. Run these commands from the repository root in PowerShell.
+Use Python 3.12 or later (CI uses 3.12), Node.js 22 or later, and Git. Run these commands from the repository root in PowerShell.
 
 ```powershell
 python -m venv .venv
@@ -38,6 +38,8 @@ npm run dev -- --webpack --hostname localhost --port 3011
 ```
 
 Open [the dashboard](http://localhost:3011) and [the health endpoint](http://127.0.0.1:8011/health). Use `frontend/.env.local` to set a different `SEPHORA_API_URL` if needed.
+
+To re-check the dataset figures (products, brands, categories, raw and deduplicated reviews, average rating), run `..\.venv\Scripts\python.exe -m sephora` from `backend/`. It applies the same cleaning as the API.
 
 ## Architecture
 
@@ -79,8 +81,9 @@ The frontend tests (Vitest and Testing Library) cover formatting, URL filters, c
 
 ```powershell
 cd frontend
+npm run lint
 npm test
 npm run typecheck
 ```
 
-GitHub Actions runs the repository scan, dependency audits, the backend and frontend tests, the frontend type check and the production build on every push and pull request.
+GitHub Actions runs the repository scan, dependency audits, the backend and frontend tests, frontend linting (ESLint with the Next.js rules), the type check and the production build on every push and pull request.
