@@ -31,7 +31,7 @@ REVIEW_FILES = (
     "reviews_1250-end.csv",
 )
 FILES = (PRODUCT_FILE, *REVIEW_FILES)
-CACHE_VERSION = 4  # bump whenever the prepared columns change
+CACHE_VERSION = 5  # bump whenever the prepared columns change
 
 PRODUCT_COLUMNS = {
     "product_id": "string",
@@ -81,7 +81,10 @@ REVIEW_COLUMNS = {
     "hair_color": "string",
     "product_id": "string",
 }
-# Columns kept after cleaning (author_id and other reviewer attributes are not exposed).
+# Columns kept after cleaning. author_id is used once to count distinct reviewer IDs
+# (see reviewer_activity) and is then dropped: it is never cached or returned.
+# The optional, self-reported appearance attributes are anonymous categories.
+REVIEWER_ATTRIBUTES = ("skin_type", "skin_tone", "eye_color", "hair_color")
 REVIEW_KEEP = [
     "product_id",
     "rating",
@@ -90,8 +93,10 @@ REVIEW_KEEP = [
     "date",
     "review_title",
     "review_text",
-    "skin_type",
+    *REVIEWER_ATTRIBUTES,
 ]
+# Reviews per distinct reviewer ID, grouped into these bands.
+ACTIVITY_BANDS = ((1, 1, "1 review"), (2, 5, "2–5"), (6, 20, "6–20"), (21, 10**9, "21 or more"))
 
 
 class DatasetUnavailable(RuntimeError):
@@ -104,6 +109,8 @@ class Dataset:
     reviews: pd.DataFrame
     raw_review_rows: int
     duplicates_removed: int
+    # Counts only (no identifiers): distinct reviewer IDs and reviews per reviewer.
+    reviewer_activity: dict = field(default_factory=dict)
     _memo: dict = field(default_factory=dict, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -146,7 +153,20 @@ def read_reviews(directory: Path) -> tuple[pd.DataFrame, int, int]:
     removed = raw - len(r)
     r["date"] = pd.to_datetime(r["submission_time"], errors="coerce").dt.normalize()
     r = r[r["date"].notna() & r["rating"].between(1, 5)]
-    return r[REVIEW_KEEP].reset_index(drop=True), raw, removed
+    return r[["author_id", *REVIEW_KEEP]].reset_index(drop=True), raw, removed
+
+
+def reviewer_activity(author_ids: pd.Series) -> dict:
+    """Distinct reviewer IDs and how many reviews each wrote. An ID identifies an account in
+    the source export, not necessarily a unique person."""
+    per = author_ids.value_counts()
+    return {
+        "distinct_reviewer_ids": int(per.size),
+        "bands": [
+            {"label": label, "reviewers": int(((per >= lo) & (per <= hi)).sum()), "reviews": int(per[(per >= lo) & (per <= hi)].sum())}
+            for lo, hi, label in ACTIVITY_BANDS
+        ],
+    }
 
 
 def build(directory: Path) -> Dataset:
@@ -154,7 +174,9 @@ def build(directory: Path) -> Dataset:
     reviews, raw, removed = read_reviews(directory)
     # Many-to-one join key: keep only reviews whose product exists in the catalogue.
     reviews = reviews[reviews["product_id"].isin(products["product_id"])].reset_index(drop=True)
-    return Dataset(products, reviews, raw, removed)
+    activity = reviewer_activity(reviews["author_id"])
+    reviews = reviews.drop(columns="author_id")
+    return Dataset(products, reviews, raw, removed, activity)
 
 
 def load(directory: Path, cache_dir: Path | None) -> Dataset:
@@ -173,6 +195,7 @@ def load(directory: Path, cache_dir: Path | None) -> Dataset:
                     pd.read_parquet(cache_dir / "reviews.parquet"),
                     meta["raw_review_rows"],
                     meta["duplicates_removed"],
+                    meta["reviewer_activity"],
                 )
         except (OSError, ValueError, KeyError):
             pass  # no usable cache: rebuild below
@@ -189,6 +212,7 @@ def load(directory: Path, cache_dir: Path | None) -> Dataset:
                         "fingerprint": fingerprint,
                         "raw_review_rows": ds.raw_review_rows,
                         "duplicates_removed": ds.duplicates_removed,
+                        "reviewer_activity": ds.reviewer_activity,
                     }
                 ),
                 encoding="utf-8",
