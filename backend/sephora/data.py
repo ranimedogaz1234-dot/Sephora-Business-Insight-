@@ -31,7 +31,7 @@ REVIEW_FILES = (
     "reviews_1250-end.csv",
 )
 FILES = (PRODUCT_FILE, *REVIEW_FILES)
-CACHE_VERSION = 5  # bump whenever the prepared columns change
+CACHE_VERSION = 6  # bump whenever the prepared columns change
 
 PRODUCT_COLUMNS = {
     "product_id": "string",
@@ -90,6 +90,7 @@ REVIEW_KEEP = [
     "rating",
     "is_recommended",
     "total_pos_feedback_count",
+    "total_neg_feedback_count",
     "date",
     "review_title",
     "review_text",

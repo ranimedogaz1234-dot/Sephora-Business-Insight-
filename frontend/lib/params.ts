@@ -86,29 +86,61 @@ export const REVIEW_SORTS = {
   helpful: "Most helpful",
   highest: "Highest rating",
   lowest: "Lowest rating",
+  longest: "Longest",
 } as const;
 export type ReviewSort = keyof typeof REVIEW_SORTS;
 
+export const RECOMMENDED = { yes: "Recommends", no: "Does not recommend", unknown: "Did not answer" } as const;
+
 export interface ReviewParams {
+  q?: string;
   subcategory?: string;
   year?: number;
   rating?: number;
+  product_id?: string;
+  brand?: string;
+  recommended?: keyof typeof RECOMMENDED;
+  skin_type?: string;
+  has_text?: "true";
   sort: ReviewSort;
   page: number;
 }
 
-export function parseReviewParams(sp: SearchParams, options: FilterOptions): ReviewParams {
+export function parseReviewParams(
+  sp: SearchParams,
+  options: FilterOptions,
+  extra?: { brands: string[]; skin_types: string[] } | null,
+): ReviewParams {
+  const q = one(sp.q)?.trim().slice(0, 60);
   const subcategory = one(sp.subcategory);
   const year = Number(one(sp.year));
   const rating = Number(one(sp.rating));
   const sort = one(sp.sort);
+  const productId = one(sp.product_id);
+  const brand = one(sp.brand);
+  const recommended = one(sp.recommended);
+  const skinType = one(sp.skin_type);
   return {
+    q: q && q.length >= 3 ? q : undefined,
     subcategory: subcategory && options.review_subcategories.some((s) => s.name === subcategory) ? subcategory : undefined,
     year: options.review_years.includes(year) ? year : undefined,
     rating: Number.isInteger(rating) && rating >= 1 && rating <= 5 ? rating : undefined,
+    product_id: productId && /^P\d{1,12}$/.test(productId) ? productId : undefined,
+    brand: brand && extra?.brands.includes(brand) ? brand : undefined,
+    recommended: recommended && recommended in RECOMMENDED ? (recommended as keyof typeof RECOMMENDED) : undefined,
+    skin_type: skinType && extra?.skin_types.includes(skinType) ? skinType : undefined,
+    has_text: one(sp.has_text) === "true" ? "true" : undefined,
     sort: sort && sort in REVIEW_SORTS ? (sort as ReviewSort) : "recent",
     page: page(one(sp.page)),
   };
+}
+
+/** Review filters without sort and page (for summaries and exports). */
+export function reviewFilterQuery(p: ReviewParams) {
+  const { sort: _sort, page: _page, ...filters } = p;
+  void _sort;
+  void _page;
+  return filters;
 }
 
 /** Link to the same page with some parameters changed; empty values and page 1 are dropped. */

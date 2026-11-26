@@ -152,6 +152,7 @@ export interface ReviewCardData {
   rating: number;
   recommended: boolean | null;
   helpful_votes: number;
+  unhelpful_votes?: number;
   date: string;
   title: string | null;
   text: string | null;
@@ -330,14 +331,29 @@ export interface ProductOptions {
 }
 
 export interface ReviewSummary {
+  filters: Record<string, string | number | boolean>;
   total_reviews: number;
   average_rating: number | null;
   recommend_rate: number | null;
   reviewed_products: number;
   ratings: RatingBucket[];
+  /** Star-rating groups (not text sentiment): positive 4–5★, neutral 3★, negative 1–2★. */
+  rating_groups: { key: "positive" | "neutral" | "negative"; label: string; count: number; share: number | null }[];
+  recommendation: { yes: number; no: number; unknown: number };
   granularity: "month" | "year";
   trend: TrendPoint[];
   top_products: RankedProduct[];
+  text: { with_text: number; median_length: number | null; length_bands: { label: string; count: number; average_rating: number | null }[] };
+  helpfulness: { with_votes: number; total_helpful_votes: number; total_unhelpful_votes: number };
+  most_helpful: ReviewRow[];
+  term?: {
+    q: string;
+    matches: number;
+    base_reviews: number;
+    mention_share: number | null;
+    average_rating_with_term: number | null;
+    average_rating_without_term: number | null;
+  };
 }
 
 export interface ReviewRow {
@@ -452,6 +468,7 @@ export const api = {
   product: (id: string) => get<ProductDetails>(`/api/products/${encodeURIComponent(id)}`),
   reviewSummary: (q: Query) => get<ReviewSummary>("/api/reviews/summary", q),
   reviews: (q: Query) => get<Page<ReviewRow>>("/api/reviews", q),
+  reviewOptions: () => get<{ brands: string[]; skin_types: string[] }>("/api/reviews/options"),
 };
 
 /** Run a request without letting its failure break the whole page. */
