@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, brands, categories as category_tree, customers, dashboard, products as catalogue, reviews as review_data  # noqa: E402  (after .env is loaded)
+from sephora import analytics, brands, categories as category_tree, customers, dashboard, pricing, products as catalogue, reviews as review_data  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -267,6 +267,16 @@ def category_analytics(primary: Name = None, secondary: Name = None):
             raise HTTPException(status_code=422, detail="secondary requires primary")
         _check(secondary, paths[primary], "subcategory")
     return category_tree.category_analytics(ds, primary, secondary)
+
+
+# ----------------------------------------------------------------------------- pricing
+@app.get("/api/pricing")
+def price_analytics(category: Name = None):
+    """Price distribution, category-relative segments, price ranges by category and brand,
+    rating against price, best-rated affordable products and documented value indicators.
+    Listed prices only: nothing here is sales or revenue."""
+    ds = get_dataset()
+    return pricing.pricing(ds, _category(ds, category))
 
 
 # ----------------------------------------------------------------------------- customers
