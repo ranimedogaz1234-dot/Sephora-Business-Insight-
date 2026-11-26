@@ -44,8 +44,17 @@ export function ReviewCard({
               <span className="inline-flex items-center gap-1">
                 <ThumbsUp aria-hidden className="h-3 w-3" />
                 <span>
-                  {formatInteger(r.helpful_votes)}
-                  <span className="sr-only"> people found this helpful</span>
+                  {r.unhelpful_votes !== undefined && r.unhelpful_votes > 0 ? (
+                    <>
+                      {formatInteger(r.helpful_votes)} of {formatInteger(r.helpful_votes + r.unhelpful_votes)}
+                      <span className="sr-only"> people found this helpful</span>
+                    </>
+                  ) : (
+                    <>
+                      {formatInteger(r.helpful_votes)}
+                      <span className="sr-only"> people found this helpful</span>
+                    </>
+                  )}
                 </span>
               </span>
             )}

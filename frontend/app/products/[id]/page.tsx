@@ -271,6 +271,13 @@ export default async function ProductPage({ params }: Props) {
       )}
 
       <SectionTitle title="Customer reviews" description="Statistics computed from the review files for this product." />
+      {reviews && (
+        <p className="-mt-2 mb-4">
+          <Link href={`/reviews?product_id=${p.product_id}`} className="text-sm font-medium text-burgundy hover:underline">
+            Read and search all {formatInteger(reviews.count)} reviews →
+          </Link>
+        </p>
+      )}
       {reviews ? (
         <CustomerReviews r={reviews} />
       ) : (

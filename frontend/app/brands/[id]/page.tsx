@@ -132,6 +132,13 @@ export default async function BrandPage({ params }: Props) {
       </div>
 
       <SectionTitle title="Customer reviews" description="From the review files (Skincare products only)." />
+      {reviews && (
+        <p className="-mt-2 mb-4">
+          <Link href={`/reviews?brand=${encodeURIComponent(b.brand_name)}`} className="text-sm font-medium text-burgundy hover:underline">
+            Read and search all {formatInteger(reviews.count)} reviews →
+          </Link>
+        </p>
+      )}
       {reviews ? (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
