@@ -123,6 +123,7 @@ def product_row(row) -> dict:
     return {
         "product_id": str(row.product_id),
         "product_name": str(row.product_name),
+        "brand_id": int(row.brand_id),
         "brand_name": str(row.brand_name),
         "category": str(row.primary_category),
         "subcategory": str(row.secondary_category),
