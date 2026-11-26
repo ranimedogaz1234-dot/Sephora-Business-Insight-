@@ -26,7 +26,12 @@ PATTERNS = {
     "Slack token": r"\bxox[baprs]-[A-Za-z0-9-]{15,}\b",
     "credential in URL": r"\b[a-z][a-z0-9+.-]*://[^\s/@:]+:[^\s/@]+@",
     "public secret variable": r"\bNEXT_PUBLIC_[A-Z0-9_]*(?:API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)[A-Z0-9_]*\b",
+    "local user path": r"(?i)\b[A-Z]:[\\/]{1,2}Users[\\/]{1,2}[^\\/\s\"'`]+|(?<![\w.])/(?:Users|home)/[A-Za-z0-9._-]+/",
 }
+EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+# Addresses that identify no one: GitHub's private commit addresses and reserved example domains.
+PUBLIC_EMAIL_DOMAINS = ("users.noreply.github.com", "example.com", "example.org", "example.net")
+PUBLIC_EMAILS = {"noreply@github.com"}
 ASSIGNMENT = re.compile(
     r"""(?im)^[ \t]*(?:export[ \t]+)?["']?([A-Z0-9_.-]*(?:API_KEY|ACCESS_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)[A-Z0-9_.-]*)["']?[ \t]*[:=][ \t]*(.*)$"""
 )
@@ -63,12 +68,30 @@ def private_path(path: str) -> bool:
     )
 
 
+def personal_email(address: str) -> bool:
+    address = address.lower()
+    local, domain = address.rsplit("@", 1)
+    if local == "git":  # SSH remote such as git@github.com:owner/repo
+        return False
+    return address not in PUBLIC_EMAILS and not any(
+        domain == d or domain.endswith("." + d) for d in PUBLIC_EMAIL_DOMAINS
+    )
+
+
+def identity_email(variable: str) -> str:
+    """Email Git will record for the next commit (environment overrides config)."""
+    ident = git("var", variable).decode("utf-8", errors="replace")
+    return ident[ident.find("<") + 1 : ident.rfind(">")]
+
+
 def findings(blob: bytes):
     encoding = "utf-16" if blob.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
     source = blob.decode(encoding, errors="replace")
     for label, pattern in PATTERNS.items():
         if re.search(pattern, source):
             yield label
+    if any(personal_email(m.group(0)) for m in EMAIL.finditer(source)):
+        yield "personal email address"
     for match in ASSIGNMENT.finditer(source):
         value = match.group(2).strip().rstrip(",").strip("'\x22")
         if match.group(1).lower() == "persist-credentials" and value == "false":
@@ -84,6 +107,7 @@ def findings(blob: bytes):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--pre-commit", action="store_true")
     parser.add_argument("--pre-push", action="store_true")
     args = parser.parse_args()
     tips = []
@@ -93,9 +117,24 @@ def main() -> int:
             if local.strip("0"):
                 tips.append(local)
 
+    failed = False
+    # Older history is already public; only commits about to be created or pushed are checked.
+    hint = "use your GitHub noreply address (git config user.email <id>+<username>@users.noreply.github.com)"
+    if args.pre_commit:
+        for role in ("AUTHOR", "COMMITTER"):
+            if personal_email(identity_email(f"GIT_{role}_IDENT")):
+                print(f"Blocked personal email as commit {role.lower()}: {hint}", file=sys.stderr)
+                failed = True
+    if tips:
+        new = git("rev-list", *tips, "--not", "--remotes").decode().split()
+        for commit in new:
+            emails = git("show", "-s", "--format=%ae%n%ce", commit).decode("utf-8", errors="replace").split()
+            if any(personal_email(e) for e in emails if "@" in e):
+                print(f"Blocked personal email on commit {commit[:12]}: {hint}", file=sys.stderr)
+                failed = True
+
     paths_and_blobs = set(entries(git("ls-files", "-s", "-z"), 1))
     commits = git("rev-list", "--all", *tips).decode().splitlines()
-    failed = False
     for commit in commits:
         paths_and_blobs.update(entries(git("ls-tree", "-r", "-z", commit), 2))
         for label in findings(git("show", "-s", "--format=%B", commit)):
