@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
+    "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run"
   },
@@ -29,6 +30,8 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
     "jsdom": "^31.0.1",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.0",
