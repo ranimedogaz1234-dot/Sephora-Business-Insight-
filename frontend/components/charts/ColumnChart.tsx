@@ -66,7 +66,8 @@ export function ColumnChart({
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: labels ? 24 : 8, right: 4, bottom: 0, left: 0 }} barCategoryGap="28%">
             <CartesianGrid stroke={colors.grid} vertical={false} />
-            <XAxis dataKey="label" interval={0} {...axis} />
+            {/* Few bars: every label. Many bars: labels that would collide are skipped (the tooltip and table keep them). */}
+            <XAxis dataKey="label" interval={data.length > 6 ? "preserveStartEnd" : 0} minTickGap={4} {...axis} />
             <YAxis tickFormatter={(v: number) => format(v)} width={56} domain={domain} {...axis} />
             <Tooltip
               content={<ColumnTooltip unit={unit} format={format} />}
