@@ -9,7 +9,8 @@ export interface RankedItem {
   label: string;
   sublabel: string;
   value: number;
-  rating: number;
+  /** null when the group has no rating. */
+  rating: number | null;
 }
 
 /**
@@ -72,7 +73,7 @@ export function RankedBars({
                   rows={[
                     { label: "Detail", value: item.sublabel },
                     { label: unit, value: formatInteger(item.value) },
-                    { label: "Average rating", value: `★ ${formatRating(item.rating)}` },
+                    { label: "Average rating", value: item.rating === null ? "Not rated" : `★ ${formatRating(item.rating)}` },
                   ]}
                 />
               </div>
@@ -83,7 +84,7 @@ export function RankedBars({
       <SrTable
         caption={caption}
         head={["Rank", "Name", "Detail", unit, "Average rating"]}
-        rows={items.map((i, n) => [n + 1, i.label, i.sublabel, i.value, formatRating(i.rating)])}
+        rows={items.map((i, n) => [n + 1, i.label, i.sublabel, i.value, i.rating === null ? "Not rated" : formatRating(i.rating)])}
       />
     </>
   );

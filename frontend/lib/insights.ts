@@ -78,3 +78,29 @@ export function recommendationInsight(p: RecommendationPatterns): string | undef
   const missing = p.answered + p.unanswered ? p.unanswered / (p.answered + p.unanswered) : 0;
   return `${formatPercent(p.recommend_rate)} recommend overall; ${formatPercent(missing)} of reviews did not answer and are excluded.`;
 }
+
+const FLAG_LABELS: Record<string, string> = {
+  new: "New",
+  exclusive: "Sephora exclusive",
+  online_only: "Online only",
+  limited_edition: "Limited edition",
+  on_sale: "On sale",
+  out_of_stock: "Out of stock",
+};
+export const flagLabel = (key: string) => FLAG_LABELS[key] ?? key;
+
+/** "+0.25 vs category": the product's rating against its primary category's mean. */
+export function ratingIndicator(delta: number | null): { text: string; tone: "positive" | "negative" | "neutral" } | null {
+  if (delta === null) return null;
+  if (Math.abs(delta) < 0.05) return { text: "At category average", tone: "neutral" };
+  const sign = delta > 0 ? "+" : "−";
+  return { text: `${sign}${Math.abs(delta).toFixed(2)} vs category`, tone: delta > 0 ? "positive" : "negative" };
+}
+
+/** "Top 5% loved in category" from the loves percentile (share of products with fewer loves). */
+export function lovesIndicator(percentile: number | null): string | null {
+  if (percentile === null) return null;
+  // Round first: (1 - 0.97) * 100 is 3.0000000000000027 in floating point.
+  const top = Math.max(1, Math.ceil(Math.round((1 - percentile) * 1000) / 10));
+  return top <= 50 ? `Top ${top}% loved in category` : `Bottom ${101 - top}% loved in category`;
+}

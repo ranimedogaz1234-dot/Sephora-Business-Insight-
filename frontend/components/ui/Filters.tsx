@@ -70,3 +70,45 @@ export function SelectField({
     </label>
   );
 }
+
+/** Numeric input (e.g. a price bound); applied with the form's submit button. */
+export function NumberField({
+  label,
+  name,
+  value,
+  placeholder,
+  min = 0,
+  max,
+  step = 1,
+  prefix,
+}: {
+  label: string;
+  name: string;
+  value?: number;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  prefix?: string;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-muted sm:w-28">
+      {label}
+      <span className="relative">
+        {prefix && <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">{prefix}</span>}
+        <input
+          type="number"
+          inputMode="decimal"
+          name={name}
+          defaultValue={value ?? ""}
+          key={value ?? ""}
+          min={min}
+          max={max}
+          step={step}
+          placeholder={placeholder}
+          className={`h-10 w-full rounded-xl border border-line bg-white ${prefix ? "pl-7" : "pl-3"} pr-2 text-sm text-charcoal placeholder:text-muted hover:border-rose focus:border-burgundy focus:outline-none`}
+        />
+      </span>
+    </label>
+  );
+}
