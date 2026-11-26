@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, brands, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
+from sephora import analytics, brands, categories as category_tree, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -251,6 +251,22 @@ def brand_details(brand_id: Annotated[int, PathParam(ge=1, le=10**9)]):
     if details is None:
         raise HTTPException(status_code=404, detail="Brand not found")
     return details
+
+
+# ----------------------------------------------------------------------------- categories
+@app.get("/api/category-analytics")
+def category_analytics(primary: Name = None, secondary: Name = None):
+    """Drill-down: no parameter = primary categories; primary = its secondary categories;
+    primary + secondary = its tertiary categories. Popularity uses engagement metrics
+    (loves, catalogue review counts, review rows), never sales."""
+    ds = get_dataset()
+    paths = category_tree.category_paths(ds)
+    _check(primary, list(paths), "category")
+    if secondary is not None:
+        if primary is None:
+            raise HTTPException(status_code=422, detail="secondary requires primary")
+        _check(secondary, paths[primary], "subcategory")
+    return category_tree.category_analytics(ds, primary, secondary)
 
 
 # ----------------------------------------------------------------------------- reviews
