@@ -168,3 +168,31 @@ export function parseBrandParams(sp: SearchParams, options: FilterOptions): Bran
     page: page(one(sp.page)),
   };
 }
+
+export const CATEGORY_METRICS = {
+  products: "Products",
+  median_loves: "Median loves per product",
+  catalogue_reviews_per_product: "Catalogue reviews per product",
+  median_price: "Median price",
+  average_catalogue_rating: "Catalogue rating",
+} as const;
+export type CategoryMetric = keyof typeof CATEGORY_METRICS;
+
+export interface CategoryParams {
+  primary?: string;
+  secondary?: string;
+  sort: CategoryMetric;
+}
+
+/** Drill-down path from the URL; a secondary category is kept only under its own primary. */
+export function parseCategoryParams(sp: SearchParams, paths: Record<string, string[]> | null): CategoryParams {
+  const primary = one(sp.primary);
+  const secondary = one(sp.secondary);
+  const sort = one(sp.sort);
+  const okPrimary = primary && paths && primary in paths ? primary : undefined;
+  return {
+    primary: okPrimary,
+    secondary: okPrimary && secondary && paths![okPrimary].includes(secondary) ? secondary : undefined,
+    sort: sort && sort in CATEGORY_METRICS ? (sort as CategoryMetric) : "products",
+  };
+}

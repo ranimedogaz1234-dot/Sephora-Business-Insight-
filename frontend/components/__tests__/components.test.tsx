@@ -18,7 +18,7 @@ describe("Shell navigation", () => {
     );
     const nav = screen.getByRole("navigation", { name: "Main" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/", "/products", "/brands", "/reviews", "/about"]);
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/", "/products", "/brands", "/categories", "/reviews", "/about"]);
     expect(within(nav).getByRole("link", { name: "Products" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current");
   });
