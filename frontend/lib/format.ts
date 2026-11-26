@@ -26,3 +26,20 @@ export function formatDate(iso: string | null): string {
 export function truncate(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
 }
+
+/**
+ * Named number formats. Server pages pass the name to client charts (functions cannot
+ * cross the server/client boundary).
+ */
+export const VALUE_FORMATS = {
+  integer: formatInteger,
+  compact: formatCompact,
+  percent: (n: number) => formatPercent(n, 0),
+  percent1: (n: number) => formatPercent(n, 1),
+  rating: formatRating,
+  usd: formatUsd,
+  usd2: (n: number) => `$${n.toFixed(2)}`,
+  decimal2: (n: number) => n.toFixed(2),
+} as const;
+export type ValueFormat = keyof typeof VALUE_FORMATS;
+export const formatValue = (n: number, f: ValueFormat) => VALUE_FORMATS[f](n);

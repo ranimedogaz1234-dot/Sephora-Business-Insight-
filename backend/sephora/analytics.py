@@ -40,29 +40,48 @@ def _reviews_with_products(ds: Dataset) -> pd.DataFrame:
 
 
 # ----------------------------------------------------------------------------- dashboard
-def overview(ds: Dataset) -> dict:
+def scoped(ds: Dataset, category: str | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Catalogue rows and joined review rows for one primary category (or everything)."""
+
     def compute():
-        p, r = ds.products, ds.reviews
+        p = ds.products
+        r = _reviews_with_products(ds)
+        if category:
+            p = p[p["primary_category"] == category]
+            r = r[r["primary_category"] == category]
+        return p, r
+
+    return ds.memo(("scoped", category), compute)
+
+
+def overview(ds: Dataset, category: str | None = None) -> dict:
+    def compute():
+        p, r = scoped(ds, category)
         rec = r["is_recommended"].dropna()
-        scope = sorted(_reviews_with_products(ds)["primary_category"].dropna().unique().tolist())
+        scope = sorted(r["primary_category"].dropna().unique().tolist())
         return {
+            "category": category,
             "total_products": len(p),
             "total_brands": int(p["brand_name"].nunique()),
             "total_categories": int(p["primary_category"].nunique()),
-            "average_price": _r(p["price_usd"].mean(), 2),
+            "average_price": _r(p["price_usd"].mean(), 2) if len(p) else None,
+            "median_price": _r(p["price_usd"].median(), 2) if len(p) else None,
+            "average_catalogue_rating": _r(p["rating"].mean(), 2) if p["rating"].notna().any() else None,
+            "total_loves": int(p["loves_count"].sum()),
             "total_reviews": len(r),
-            "average_rating": _r(r["rating"].mean(), 2),
+            "average_rating": _r(r["rating"].mean(), 2) if len(r) else None,
             "five_star_share": _r((r["rating"] == 5).mean()) if len(r) else None,
             "recommend_rate": _r(rec.mean()) if len(rec) else None,
+            "recommend_answered": len(rec),
             "reviewed_products": int(r["product_id"].nunique()),
-            "first_review": _date(r["date"].min()),
-            "last_review": _date(r["date"].max()),
+            "first_review": _date(r["date"].min()) if len(r) else None,
+            "last_review": _date(r["date"].max()) if len(r) else None,
             "review_categories": scope,
             "raw_review_rows": ds.raw_review_rows,
             "duplicates_removed": ds.duplicates_removed,
         }
 
-    return ds.memo("overview", compute)
+    return ds.memo(("overview", category), compute)
 
 
 def category_mix(ds: Dataset) -> list[dict]:
@@ -101,13 +120,13 @@ def _rank_products(r: pd.DataFrame, limit: int) -> list[dict]:
     ]
 
 
-def top_products(ds: Dataset, limit: int) -> list[dict]:
-    return ds.memo(("top_products", limit), lambda: _rank_products(_reviews_with_products(ds), limit))
+def top_products(ds: Dataset, limit: int, category: str | None = None) -> list[dict]:
+    return ds.memo(("top_products", limit, category), lambda: _rank_products(scoped(ds, category)[1], limit))
 
 
-def top_brands(ds: Dataset, limit: int) -> list[dict]:
+def top_brands(ds: Dataset, limit: int, category: str | None = None) -> list[dict]:
     def compute():
-        r = _reviews_with_products(ds)
+        r = scoped(ds, category)[1]
         if r.empty:
             return []
         g = r.groupby("brand_name", observed=True).agg(
@@ -130,7 +149,7 @@ def top_brands(ds: Dataset, limit: int) -> list[dict]:
             for row in g.head(limit).itertuples()
         ]
 
-    return ds.memo(("top_brands", limit), compute)
+    return ds.memo(("top_brands", limit, category), compute)
 
 
 def rating_distribution(r: pd.DataFrame) -> list[dict]:
@@ -162,12 +181,12 @@ def review_trend(r: pd.DataFrame, granularity: str) -> list[dict]:
     ]
 
 
-def ratings(ds: Dataset) -> list[dict]:
-    return ds.memo("ratings", lambda: rating_distribution(ds.reviews))
+def ratings(ds: Dataset, category: str | None = None) -> list[dict]:
+    return ds.memo(("ratings", category), lambda: rating_distribution(scoped(ds, category)[1]))
 
 
-def trend(ds: Dataset, granularity: str) -> list[dict]:
-    return ds.memo(("trend", granularity), lambda: review_trend(ds.reviews, granularity))
+def trend(ds: Dataset, granularity: str, category: str | None = None) -> list[dict]:
+    return ds.memo(("trend", granularity, category), lambda: review_trend(scoped(ds, category)[1], granularity))
 
 
 # ----------------------------------------------------------------------------- filters

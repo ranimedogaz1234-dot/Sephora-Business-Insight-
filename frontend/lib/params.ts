@@ -80,3 +80,13 @@ export function hrefWith(path: string, params: object, changes: Record<string, s
   const s = qs.toString();
   return s ? `${path}?${s}` : path;
 }
+
+export interface DashboardParams {
+  category?: string;
+}
+
+/** The dashboard's global filter: a primary category that exists in the catalogue. */
+export function parseDashboardParams(sp: SearchParams, options: FilterOptions | null): DashboardParams {
+  const category = one(sp.category);
+  return { category: category && options?.categories.some((c) => c.name === category) ? category : undefined };
+}

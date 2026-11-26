@@ -4,14 +4,22 @@
  */
 
 export interface Overview {
+  /** The primary category the figures are scoped to, or null for the whole catalogue. */
+  category: string | null;
   total_products: number;
   total_brands: number;
   total_categories: number;
-  average_price: number;
+  average_price: number | null;
+  median_price: number | null;
+  /** Mean of Sephora's catalogue rating over rated products. */
+  average_catalogue_rating: number | null;
+  total_loves: number;
   total_reviews: number;
   average_rating: number | null;
   five_star_share: number | null;
   recommend_rate: number | null;
+  /** Reviews that answered the recommendation question. */
+  recommend_answered: number;
   reviewed_products: number;
   first_review: string | null;
   last_review: string | null;
@@ -114,6 +122,44 @@ export interface ReviewRow {
   skin_type: string | null;
 }
 
+export interface CategoryPerformance {
+  category: string;
+  products: number;
+  share: number;
+  brands: number;
+  average_price: number | null;
+  median_price: number | null;
+  average_catalogue_rating: number | null;
+  rated_products: number;
+  total_loves: number;
+  median_loves: number | null;
+  /** Sephora's catalogue review counts, summed. */
+  catalogue_reviews: number;
+  /** Rows in the review files (Skincare only). */
+  review_rows: number;
+  average_review_rating: number | null;
+  recommend_rate: number | null;
+}
+
+export interface RecommendationPatterns {
+  answered: number;
+  unanswered: number;
+  recommend_rate: number | null;
+  by_rating: { rating: number; answered: number; recommend_rate: number | null }[];
+  by_year: { year: number; answered: number; recommend_rate: number | null }[];
+}
+
+export type Tone = "neutral" | "positive" | "warning" | "negative";
+
+export interface Observation {
+  id: string;
+  title: string;
+  detail: string;
+  tone: Tone;
+  /** The figures the observation was computed from. */
+  evidence: Record<string, number | string | null>;
+}
+
 export type Query = Record<string, string | number | undefined | null>;
 
 export function apiBase(): string {
@@ -148,12 +194,15 @@ export async function get<T>(path: string, query?: Query): Promise<T> {
 }
 
 export const api = {
-  overview: () => get<Overview>("/api/overview"),
+  overview: (category?: string) => get<Overview>("/api/overview", { category }),
   categories: () => get<CategoryShare[]>("/api/categories"),
-  topProducts: (limit = 10) => get<RankedProduct[]>("/api/top-products", { limit }),
-  topBrands: (limit = 10) => get<RankedBrand[]>("/api/top-brands", { limit }),
-  ratings: () => get<RatingBucket[]>("/api/ratings"),
-  trend: (granularity: "month" | "year") => get<TrendPoint[]>("/api/trend", { granularity }),
+  topProducts: (limit = 10, category?: string) => get<RankedProduct[]>("/api/top-products", { limit, category }),
+  topBrands: (limit = 10, category?: string) => get<RankedBrand[]>("/api/top-brands", { limit, category }),
+  ratings: (category?: string) => get<RatingBucket[]>("/api/ratings", { category }),
+  trend: (granularity: "month" | "year", category?: string) => get<TrendPoint[]>("/api/trend", { granularity, category }),
+  categoryPerformance: () => get<CategoryPerformance[]>("/api/category-performance"),
+  recommendations: (category?: string) => get<RecommendationPatterns>("/api/recommendations", { category }),
+  observations: (category?: string) => get<Observation[]>("/api/observations", { category }),
   filters: () => get<FilterOptions>("/api/filters"),
   products: (q: Query) => get<Page<ProductRow>>("/api/products", q),
   reviewSummary: (q: Query) => get<ReviewSummary>("/api/reviews/summary", q),

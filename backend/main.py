@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics  # noqa: E402  (after .env is loaded)
+from sephora import analytics, dashboard  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -50,50 +50,7 @@ def health() -> dict[str, str | bool]:
     return {"status": "ok", "dataset_ready": dataset_ready, "dataset_loaded": is_loaded()}
 
 
-# ----------------------------------------------------------------------------- dashboard
-@app.get("/api/overview")
-def overview():
-    """Headline KPIs."""
-    return analytics.overview(get_dataset())
-
-
-@app.get("/api/categories")
-def categories():
-    """Products per primary category (catalogue, all products)."""
-    return analytics.category_mix(get_dataset())
-
-
-@app.get("/api/top-products")
-def top_products(limit: Annotated[int, Query(ge=1, le=20)] = 10):
-    """Most reviewed products by number of review rows."""
-    return analytics.top_products(get_dataset(), limit)
-
-
-@app.get("/api/top-brands")
-def top_brands(limit: Annotated[int, Query(ge=1, le=20)] = 10):
-    """Brands ranked by number of review rows."""
-    return analytics.top_brands(get_dataset(), limit)
-
-
-@app.get("/api/ratings")
-def ratings():
-    """Number of reviews per star rating (1–5)."""
-    return analytics.ratings(get_dataset())
-
-
-@app.get("/api/trend")
-def trend(granularity: Literal["month", "year"] = "month"):
-    """Review volume and average rating over time."""
-    return analytics.trend(get_dataset(), granularity)
-
-
-@app.get("/api/filters")
-def filters():
-    """Allowed values for the Products and Reviews filters."""
-    return analytics.filter_options(get_dataset())
-
-
-# ----------------------------------------------------------------------------- products
+# ----------------------------------------------------------------------------- shared params
 SearchText = Annotated[str | None, Query(min_length=2, max_length=80)]
 Name = Annotated[str | None, Query(min_length=1, max_length=80)]
 PageNo = Annotated[int, Query(ge=1, le=10_000)]
@@ -104,6 +61,81 @@ def _check(value: str | None, allowed: list[str], field: str) -> None:
         raise HTTPException(status_code=422, detail=f"Unknown {field}")
 
 
+def _category(ds, category: str | None) -> str | None:
+    """Validate a primary category against the catalogue."""
+    _check(category, [c["name"] for c in analytics.filter_options(ds)["categories"]], "category")
+    return category
+
+
+# ----------------------------------------------------------------------------- dashboard
+@app.get("/api/overview")
+def overview(category: Name = None):
+    """Headline KPIs, optionally for one primary category."""
+    ds = get_dataset()
+    return analytics.overview(ds, _category(ds, category))
+
+
+@app.get("/api/categories")
+def categories():
+    """Products per primary category (catalogue, all products)."""
+    return analytics.category_mix(get_dataset())
+
+
+@app.get("/api/top-products")
+def top_products(limit: Annotated[int, Query(ge=1, le=20)] = 10, category: Name = None):
+    """Most reviewed products by number of review rows."""
+    ds = get_dataset()
+    return analytics.top_products(ds, limit, _category(ds, category))
+
+
+@app.get("/api/top-brands")
+def top_brands(limit: Annotated[int, Query(ge=1, le=20)] = 10, category: Name = None):
+    """Brands ranked by number of review rows."""
+    ds = get_dataset()
+    return analytics.top_brands(ds, limit, _category(ds, category))
+
+
+@app.get("/api/ratings")
+def ratings(category: Name = None):
+    """Number of reviews per star rating (1–5)."""
+    ds = get_dataset()
+    return analytics.ratings(ds, _category(ds, category))
+
+
+@app.get("/api/trend")
+def trend(granularity: Literal["month", "year"] = "month", category: Name = None):
+    """Review volume and average rating over time."""
+    ds = get_dataset()
+    return analytics.trend(ds, granularity, _category(ds, category))
+
+
+@app.get("/api/category-performance")
+def category_performance():
+    """Catalogue size, prices, catalogue rating, loves and review rows per primary category."""
+    return dashboard.category_performance(get_dataset())
+
+
+@app.get("/api/recommendations")
+def recommendations(category: Name = None):
+    """Recommendation rate (among reviewers who answered) by star rating and by year."""
+    ds = get_dataset()
+    return dashboard.recommendation_patterns(ds, _category(ds, category))
+
+
+@app.get("/api/observations")
+def observations(category: Name = None):
+    """Automatically computed observations, each with the figures it is based on."""
+    ds = get_dataset()
+    return dashboard.observations(ds, _category(ds, category))
+
+
+@app.get("/api/filters")
+def filters():
+    """Allowed values for the Products and Reviews filters."""
+    return analytics.filter_options(get_dataset())
+
+
+# ----------------------------------------------------------------------------- products
 @app.get("/api/products")
 def products(
     q: SearchText = None,
@@ -114,8 +146,7 @@ def products(
 ):
     """Catalogue search (name or brand), category filter, sorting and pagination."""
     ds = get_dataset()
-    _check(category, [c["name"] for c in analytics.filter_options(ds)["categories"]], "category")
-    return analytics.list_products(ds, q.strip() if q else None, category, sort, page, page_size)
+    return analytics.list_products(ds, q.strip() if q else None, _category(ds, category), sort, page, page_size)
 
 
 # ----------------------------------------------------------------------------- reviews
