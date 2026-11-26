@@ -104,3 +104,12 @@ export function lovesIndicator(percentile: number | null): string | null {
   const top = Math.max(1, Math.ceil(Math.round((1 - percentile) * 1000) / 10));
   return top <= 50 ? `Top ${top}% loved in category` : `Bottom ${101 - top}% loved in category`;
 }
+
+/** Plain-language strength of a rank correlation (|rho|: <0.1 none, <0.3 weak, <0.5 moderate, else strong). */
+export function correlationLabel(rho: number | null): string {
+  if (rho === null) return "not enough data";
+  const a = Math.abs(rho);
+  if (a < 0.1) return "no meaningful relationship";
+  const strength = a < 0.3 ? "weak" : a < 0.5 ? "moderate" : "strong";
+  return `a ${strength} ${rho > 0 ? "positive" : "negative"} relationship`;
+}

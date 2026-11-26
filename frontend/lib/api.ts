@@ -323,6 +323,57 @@ export interface CustomerPreferences {
   }[];
 }
 
+export interface PriceSpread {
+  name: string;
+  products: number;
+  median_price: number;
+  p25_price: number;
+  p75_price: number;
+  min_price: number;
+  max_price: number;
+}
+
+export interface PricedProduct extends ProductRow {
+  segment: string;
+  /** Price divided by the median price of the product's primary category. */
+  price_index: number;
+  category_median_price: number;
+  value_position: string;
+}
+
+export interface Pricing {
+  category: string | null;
+  products: number;
+  average_price: number | null;
+  median_price: number | null;
+  percentiles: Record<"p10" | "p25" | "p75" | "p90", number | null>;
+  min_price: number | null;
+  max_price: number | null;
+  histogram: Bucket[];
+  segments: {
+    segment: string;
+    products: number;
+    share: number | null;
+    median_price: number | null;
+    min_price: number | null;
+    max_price: number | null;
+    average_rating: number | null;
+    median_loves: number | null;
+    recommend_rate: number | null;
+    review_rows: number;
+  }[];
+  bands: { label: string; products: number; average_rating: number | null; top_rated_share: number | null; median_loves: number | null }[];
+  rating_price_correlation: number | null;
+  loves_price_correlation: number | null;
+  by_category: PriceSpread[];
+  by_brand: PriceSpread[];
+  value_positions: { key: string; label: string; products: number }[];
+  best_affordable: PricedProduct[];
+  high_value: PricedProduct[];
+  sale: { products: number; median_discount: number | null };
+  min_reviews_for_ranking: number;
+}
+
 export interface ProductOptions {
   brands: NamedCount[];
   subcategories: { category: string; name: string; count: number }[];
@@ -459,6 +510,7 @@ export const api = {
   productSummary: (q: Query) => get<ProductSummary>("/api/products/summary", q),
   productOptions: () => get<ProductOptions>("/api/products/options"),
   categoryAnalytics: (q: Query) => get<CategoryAnalytics>("/api/category-analytics", q),
+  pricing: (category?: string) => get<Pricing>("/api/pricing", { category }),
   customers: (q: Query) => get<CustomerSummary>("/api/customers", q),
   customerPreferences: (q: Query) => get<CustomerPreferences>("/api/customers/preferences", q),
   brands: (q: Query) => get<Page<BrandRow>>("/api/brands", q),
