@@ -454,9 +454,64 @@ export interface Observation {
   id: string;
   title: string;
   detail: string;
+  /** A suggested next step (business insights only). */
+  action?: string;
   tone: Tone;
   /** The figures the observation was computed from. */
   evidence: Record<string, number | string | null>;
+}
+
+/* ----------------------------------------------------------------------------- business insights */
+export interface InsightProduct {
+  product_id: string;
+  product_name: string;
+  brand_name: string;
+  category: string;
+  price: number | null;
+  rating: number | null;
+  category_rating: number | null;
+  catalogue_reviews: number;
+  loves: number;
+  loves_percentile: number | null;
+}
+
+export interface MomentumRow {
+  product_id: string;
+  product_name: string;
+  brand_name: string;
+  rating_before: number;
+  rating_recent: number;
+  reviews_before: number;
+  reviews_recent: number;
+  change: number;
+}
+
+export interface BusinessInsights {
+  category: string | null;
+  /** The rule behind each list, in plain words. */
+  rules: Record<"hidden_gems" | "at_risk" | "momentum" | "brands" | "categories", string>;
+  findings: Observation[];
+  hidden_gems: { count: number; items: InsightProduct[] };
+  at_risk: { count: number; items: InsightProduct[] };
+  /** Skincare review data only; null when another category is selected. */
+  momentum: {
+    cutoff: string | null;
+    last_review: string | null;
+    eligible: number;
+    median_change: number | null;
+    declining_count: number;
+    improving_count: number;
+    declining: MomentumRow[];
+    improving: MomentumRow[];
+  } | null;
+  brands: {
+    brands: number;
+    rating_split: number | null;
+    loves_split: number | null;
+    quadrants: { key: string; label: string; brands: number; examples: string[] }[];
+    points: { brand_name: string; rating: number; loves_per_product: number; products: number }[];
+  };
+  categories: { category: string; products: number; product_share: number; loves_share: number; demand_index: number | null; average_rating: number | null }[];
 }
 
 /* ----------------------------------------------------------------------------- sentiment */
@@ -623,6 +678,7 @@ export const api = {
   reviewSummary: (q: Query) => get<ReviewSummary>("/api/reviews/summary", q),
   reviews: (q: Query) => get<Page<ReviewRow>>("/api/reviews", q),
   reviewOptions: () => get<{ brands: string[]; skin_types: string[] }>("/api/reviews/options"),
+  insights: (category?: string) => get<BusinessInsights>("/api/insights", { category }),
   sentiment: (q: Query) => get<SentimentSummary>("/api/sentiment", q),
   sentimentRankings: (q: Query) => get<SentimentRankings>("/api/sentiment/rankings", q),
   sentimentExamples: (q: Query) => get<SentimentExamples>("/api/sentiment/examples", q),

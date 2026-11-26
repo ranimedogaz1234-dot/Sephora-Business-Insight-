@@ -1,6 +1,6 @@
 "use client";
 
-import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
+import { CartesianGrid, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 import { VALUE_FORMATS, type ValueFormat } from "@/lib/format";
 import { axis, colors } from "@/lib/theme";
 import { SrTable, TooltipBox } from "./Tooltip";
@@ -25,9 +25,12 @@ interface ScatterPlotProps {
   logX?: boolean;
   yDomain?: [number, number];
   height?: number;
+  /** Optional dashed split lines, e.g. the medians that define quadrants. */
+  xSplit?: number;
+  ySplit?: number;
 }
 
-const LOG_TICKS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
+const LOG_TICKS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10_000, 20_000, 50_000, 100_000, 200_000, 500_000];
 
 function PointTooltip({
   active,
@@ -72,6 +75,8 @@ export function ScatterPlot({
   logX = false,
   yDomain,
   height = 320,
+  xSplit,
+  ySplit,
 }: ScatterPlotProps) {
   const fx = VALUE_FORMATS[xFormat];
   const fy = VALUE_FORMATS[yFormat];
@@ -107,6 +112,8 @@ export function ScatterPlot({
               {...axis}
             />
             <ZAxis range={[56, 56]} />
+            {xSplit !== undefined && <ReferenceLine x={xSplit} stroke={colors.muted} strokeDasharray="4 4" />}
+            {ySplit !== undefined && <ReferenceLine y={ySplit} stroke={colors.muted} strokeDasharray="4 4" />}
             <Tooltip content={<PointTooltip xLabel={xLabel} yLabel={yLabel} sizeLabel={sizeLabel} xFormat={xFormat} yFormat={yFormat} />} cursor={{ stroke: colors.muted, strokeDasharray: "3 3" }} isAnimationActive={false} />
             <Scatter data={points} fill={colors.burgundy} fillOpacity={0.55} stroke="#fff" strokeWidth={1} isAnimationActive={false} />
           </ScatterChart>

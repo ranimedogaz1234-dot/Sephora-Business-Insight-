@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, brands, categories as category_tree, customers, dashboard, pricing, products as catalogue, reviews as review_data, sentiment  # noqa: E402  (after .env is loaded)
+from sephora import analytics, brands, business, categories as category_tree, customers, dashboard, pricing, products as catalogue, reviews as review_data, sentiment  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, cache_dir, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -283,6 +283,15 @@ def price_analytics(category: Name = None):
     Listed prices only: nothing here is sales or revenue."""
     ds = get_dataset()
     return pricing.pricing(ds, _category(ds, category))
+
+
+# ----------------------------------------------------------------------------- business insights
+@app.get("/api/insights")
+def insights(category: Name = None):
+    """Findings from documented rules: hidden gems, popular products rated below their category,
+    rating momentum (Skincare), brand positioning and category demand. Each rule is returned."""
+    ds = get_dataset()
+    return business.business_insights(ds, _category(ds, category))
 
 
 # ----------------------------------------------------------------------------- customers

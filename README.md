@@ -7,6 +7,7 @@ Sephora Business Insight is a business intelligence dashboard for exploring Seph
 | Page | What it shows |
 | --- | --- |
 | **Dashboard** (`/`) | KPI cards (products, reviews, average rating, brands), products by category (donut), rating distribution, review activity over time (monthly/yearly), top 10 most reviewed products and top brands by reviews |
+| **Business insights** (`/insights`) | Findings from documented rules with a suggested next step: highly rated but rarely saved products, popular products rated below their category, Skincare products whose review rating rose or fell in the last two years, brand positioning (rating against saves per product) and category demand (share of loves against share of products) |
 | **Products** (`/products`) | Searchable catalogue (name or brand), category filter, six sort orders, pagination |
 | **Reviews** (`/reviews`) | Review KPIs, star-rating donut, review trend and most reviewed products for the selected category, year and rating, plus customer review cards sorted by recency, helpfulness or rating |
 | **Sentiment** (`/sentiment`) | Positive, neutral and negative review texts by star rating, year and subcategory; sentiment per topic; words and phrases that set positive and negative reviews apart; most positive and negative products and brands; example reviews; model validation against star ratings |
@@ -67,6 +68,7 @@ All endpoints are read-only `GET` requests on the loopback backend. Invalid para
 | `/api/products?q=&category=&sort=&page=` | Catalogue search (name or brand), category filter, sort (`popular`, `rating`, `reviews`, `price_asc`, `price_desc`, `name`), pagination |
 | `/api/reviews/summary?subcategory=&year=&rating=` | Review KPIs, rating distribution, trend and top products for the filters |
 | `/api/reviews?subcategory=&year=&rating=&sort=&page=` | Paginated review texts (`recent`, `helpful`, `highest`, `lowest`) |
+| `/api/insights?category=` | Business insight findings, hidden gems, products rated below their category, rating momentum, brand quadrants and category demand, with each rule |
 | `/api/sentiment?subcategory=` | Text sentiment shares and counts, agreement with star groups, by year, star rating and subcategory |
 | `/api/sentiment/rankings?level=product\|brand&subcategory=` | Products or brands (100+ reviews) with the most positive and most negative texts |
 | `/api/sentiment/examples?subcategory=` | Example reviews per class and reviews where text and stars disagree |
