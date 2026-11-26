@@ -13,8 +13,8 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, brands, categories as category_tree, customers, dashboard, pricing, products as catalogue, reviews as review_data  # noqa: E402  (after .env is loaded)
-from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
+from sephora import analytics, brands, categories as category_tree, customers, dashboard, pricing, products as catalogue, reviews as review_data, sentiment  # noqa: E402  (after .env is loaded)
+from sephora.data import FILES, DatasetUnavailable, cache_dir, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
 PRODUCTION = os.getenv("SEPHORA_ENV", "").strip().lower() == "production"
@@ -32,6 +32,12 @@ def dataset_unavailable(_: Request, exc: DatasetUnavailable) -> JSONResponse:
     # Never reveal local paths; the reason is a short fixed message.
     log.warning("Dataset unavailable: %s", exc)
     return JSONResponse(status_code=503, content={"detail": "Dataset is not available"})
+
+
+@app.exception_handler(sentiment.SentimentUnavailable)
+def sentiment_unavailable(_: Request, exc: sentiment.SentimentUnavailable) -> JSONResponse:
+    log.warning("Sentiment unavailable: %s", exc)
+    return JSONResponse(status_code=503, content={"detail": "Sentiment has not been computed for this dataset"})
 
 
 @app.middleware("http")
@@ -364,3 +370,39 @@ def reviews(
 ):
     """Paginated review texts. Reviewer identifiers are never returned."""
     return review_data.list_reviews(get_dataset(), filters, sort, page, page_size)
+
+
+# ----------------------------------------------------------------------------- sentiment
+# Text sentiment from the adapted VADER model (sephora/sentiment.py). Scores are computed
+# once with `python -m sephora.sentiment` and cached; until then these routes return 503.
+@app.get("/api/sentiment")
+def sentiment_summary(subcategory: Name = None):
+    """Positive, neutral and negative shares of the review texts, by year, star rating and subcategory."""
+    ds = get_dataset()
+    return sentiment.summary(ds, cache_dir(), _review_subcategory(ds, subcategory))
+
+
+@app.get("/api/sentiment/rankings")
+def sentiment_rankings(level: Literal["product", "brand"] = "product", subcategory: Name = None):
+    """Products or brands (at least 100 reviews) with the most positive and most negative review texts."""
+    ds = get_dataset()
+    return sentiment.rankings(ds, cache_dir(), level, _review_subcategory(ds, subcategory))
+
+
+@app.get("/api/sentiment/examples")
+def sentiment_examples(subcategory: Name = None):
+    """Representative reviews per class and reviews whose text and stars disagree."""
+    ds = get_dataset()
+    return sentiment.examples(ds, cache_dir(), _review_subcategory(ds, subcategory))
+
+
+@app.get("/api/sentiment/topics")
+def sentiment_topics():
+    """Sentiment per topic (keyword groups) and the words that set positive and negative reviews apart."""
+    return sentiment.topics(get_dataset(), cache_dir())
+
+
+@app.get("/api/sentiment/methodology")
+def sentiment_methodology():
+    """Model, adaptations and validation against star groups on a held-out sample."""
+    return sentiment.methodology(get_dataset(), cache_dir())
