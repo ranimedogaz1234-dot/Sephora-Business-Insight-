@@ -132,6 +132,54 @@ export interface ProductSummary {
   min_reviews_for_ranking: number;
 }
 
+export interface ProductDetail extends ProductRow {
+  tertiary_category: string | null;
+  size: string | null;
+  variation_type: string | null;
+  variation_value: string | null;
+  variation_desc: string | null;
+  value_price: number | null;
+  variants: number;
+  variant_min_price: number | null;
+  variant_max_price: number | null;
+  highlights: string[];
+  ingredients: string[];
+  category_rating: number | null;
+}
+
+export interface ReviewCardData {
+  rating: number;
+  recommended: boolean | null;
+  helpful_votes: number;
+  date: string;
+  title: string | null;
+  text: string | null;
+  skin_type: string | null;
+}
+
+export interface ProductReviewStats {
+  count: number;
+  average_rating: number;
+  recommend_rate: number | null;
+  recommend_answered: number;
+  first_review: string;
+  last_review: string;
+  ratings: RatingBucket[];
+  granularity: "month" | "year";
+  trend: TrendPoint[];
+  by_skin_type: { name: string; count: number; average_rating: number | null; recommend_rate: number | null }[];
+  most_helpful: ReviewCardData[];
+}
+
+export interface ProductDetails {
+  product: ProductDetail;
+  /** null when the review files do not contain the product (they cover Skincare only). */
+  reviews: ProductReviewStats | null;
+  related: ProductRow[];
+  same_brand: ProductRow[];
+  related_rule: string;
+}
+
 export interface ProductOptions {
   brands: NamedCount[];
   subcategories: { category: string; name: string; count: number }[];
@@ -218,6 +266,8 @@ export function toQueryString(query: Query = {}): string {
 }
 
 export class ApiError extends Error {}
+/** The requested item does not exist (HTTP 404). */
+export class NotFoundError extends ApiError {}
 
 /** GET a JSON endpoint. The first request after a data change may take ~30 s (cache build). */
 export async function get<T>(path: string, query?: Query): Promise<T> {
@@ -231,6 +281,7 @@ export async function get<T>(path: string, query?: Query): Promise<T> {
     throw new ApiError("The analytics service could not be reached.");
   }
   if (response.status === 503) throw new ApiError("The dataset is not available on the server.");
+  if (response.status === 404) throw new NotFoundError("Not found.");
   if (!response.ok) throw new ApiError(`The analytics service returned an error (${response.status}).`);
   return (await response.json()) as T;
 }
@@ -249,6 +300,7 @@ export const api = {
   products: (q: Query) => get<Page<ProductRow>>("/api/products", q),
   productSummary: (q: Query) => get<ProductSummary>("/api/products/summary", q),
   productOptions: () => get<ProductOptions>("/api/products/options"),
+  product: (id: string) => get<ProductDetails>(`/api/products/${encodeURIComponent(id)}`),
   reviewSummary: (q: Query) => get<ReviewSummary>("/api/reviews/summary", q),
   reviews: (q: Query) => get<Page<ReviewRow>>("/api/reviews", q),
 };
@@ -256,10 +308,10 @@ export const api = {
 /** Run a request without letting its failure break the whole page. */
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
-export async function attempt<T>(promise: Promise<T>): Promise<Result<T>> {
+export async function attempt<T>(promise: Promise<T>): Promise<Result<T> & { notFound?: boolean }> {
   try {
     return { ok: true, data: await promise };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Unexpected error." };
+    return { ok: false, error: e instanceof Error ? e.message : "Unexpected error.", notFound: e instanceof NotFoundError };
   }
 }

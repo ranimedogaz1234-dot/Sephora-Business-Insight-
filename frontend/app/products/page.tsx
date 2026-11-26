@@ -55,9 +55,9 @@ function ShortList({ title, items, metric }: { title: string; items: ProductRow[
             <li key={p.product_id} className="flex items-baseline gap-3">
               <span className="w-4 shrink-0 text-right text-xs font-semibold text-muted">{i + 1}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-charcoal" title={p.product_name}>
+                <Link href={`/products/${p.product_id}`} className="block truncate text-sm font-medium text-charcoal hover:text-burgundy" title={p.product_name}>
                   {p.product_name}
-                </span>
+                </Link>
                 <span className="text-xs text-muted">{p.brand_name}</span>
               </span>
               <span className="shrink-0 text-sm tabular-nums text-charcoal">{metric(p)}</span>
@@ -291,7 +291,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 {result.data.items.map((p) => (
                   <tr key={p.product_id} className="border-t border-line align-top transition-colors hover:bg-blush/40">
                     <Td>
-                      <p className="font-medium text-charcoal">{p.product_name}</p>
+                      <Link href={`/products/${p.product_id}`} className="font-medium text-charcoal hover:text-burgundy hover:underline">
+                        {p.product_name}
+                      </Link>
                       <p className="text-xs text-muted">{p.brand_name}</p>
                       {p.flags.length > 0 && (
                         <p className="mt-1.5 flex flex-wrap gap-1">
