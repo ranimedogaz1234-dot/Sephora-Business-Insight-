@@ -1,8 +1,9 @@
 /** Chart preparation and one-line takeaways. Every sentence restates a computed figure. */
-import type { CategoryShare, RankedBrand, RankedProduct, RatingBucket, TrendPoint } from "@/lib/api";
+import type { CategoryShare, RankedBrand, RankedProduct, RatingBucket, RecommendationPatterns, TrendPoint } from "@/lib/api";
 import { formatInteger, formatPercent, formatPeriod } from "@/lib/format";
 import { categorical, colors, starRamp } from "@/lib/theme";
 import type { Slice } from "@/components/charts/DonutChart";
+import type { Column } from "@/components/charts/ColumnChart";
 
 /** Largest categories get the fixed colours in order; the rest fold into one grey "Other" slice. */
 export function categorySlices(items: CategoryShare[], max = categorical.length): Slice[] {
@@ -60,4 +61,46 @@ export function trendInsight(points: TrendPoint[]): string | undefined {
   const peak = points.reduce<TrendPoint | null>((a, p) => (!a || p.review_count > a.review_count ? p : a), null);
   if (!peak || peak.review_count === 0) return undefined;
   return `Busiest period: ${formatPeriod(peak.period)} with ${formatInteger(peak.review_count)} reviews.`;
+}
+
+/** Recommendation rate per star rating, on the 1 -> 5 star ramp; sample sizes go in the tooltip. */
+export function recommendationColumns(p: RecommendationPatterns): Column[] {
+  return p.by_rating.map((r) => ({
+    label: `${r.rating} ★`,
+    value: r.recommend_rate,
+    color: starRamp[r.rating - 1],
+    details: [{ label: "Reviewers who answered", value: formatInteger(r.answered) }],
+  }));
+}
+
+export function recommendationInsight(p: RecommendationPatterns): string | undefined {
+  if (p.recommend_rate === null) return undefined;
+  const missing = p.answered + p.unanswered ? p.unanswered / (p.answered + p.unanswered) : 0;
+  return `${formatPercent(p.recommend_rate)} recommend overall; ${formatPercent(missing)} of reviews did not answer and are excluded.`;
+}
+
+const FLAG_LABELS: Record<string, string> = {
+  new: "New",
+  exclusive: "Sephora exclusive",
+  online_only: "Online only",
+  limited_edition: "Limited edition",
+  on_sale: "On sale",
+  out_of_stock: "Out of stock",
+};
+export const flagLabel = (key: string) => FLAG_LABELS[key] ?? key;
+
+/** "+0.25 vs category": the product's rating against its primary category's mean. */
+export function ratingIndicator(delta: number | null): { text: string; tone: "positive" | "negative" | "neutral" } | null {
+  if (delta === null) return null;
+  if (Math.abs(delta) < 0.05) return { text: "At category average", tone: "neutral" };
+  const sign = delta > 0 ? "+" : "−";
+  return { text: `${sign}${Math.abs(delta).toFixed(2)} vs category`, tone: delta > 0 ? "positive" : "negative" };
+}
+
+/** "Top 5% loved in category" from the loves percentile (share of products with fewer loves). */
+export function lovesIndicator(percentile: number | null): string | null {
+  if (percentile === null) return null;
+  // Round first: (1 - 0.97) * 100 is 3.0000000000000027 in floating point.
+  const top = Math.max(1, Math.ceil(Math.round((1 - percentile) * 1000) / 10));
+  return top <= 50 ? `Top ${top}% loved in category` : `Bottom ${101 - top}% loved in category`;
 }

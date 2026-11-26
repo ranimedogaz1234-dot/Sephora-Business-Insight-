@@ -40,29 +40,48 @@ def _reviews_with_products(ds: Dataset) -> pd.DataFrame:
 
 
 # ----------------------------------------------------------------------------- dashboard
-def overview(ds: Dataset) -> dict:
+def scoped(ds: Dataset, category: str | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Catalogue rows and joined review rows for one primary category (or everything)."""
+
     def compute():
-        p, r = ds.products, ds.reviews
+        p = ds.products
+        r = _reviews_with_products(ds)
+        if category:
+            p = p[p["primary_category"] == category]
+            r = r[r["primary_category"] == category]
+        return p, r
+
+    return ds.memo(("scoped", category), compute)
+
+
+def overview(ds: Dataset, category: str | None = None) -> dict:
+    def compute():
+        p, r = scoped(ds, category)
         rec = r["is_recommended"].dropna()
-        scope = sorted(_reviews_with_products(ds)["primary_category"].dropna().unique().tolist())
+        scope = sorted(r["primary_category"].dropna().unique().tolist())
         return {
+            "category": category,
             "total_products": len(p),
             "total_brands": int(p["brand_name"].nunique()),
             "total_categories": int(p["primary_category"].nunique()),
-            "average_price": _r(p["price_usd"].mean(), 2),
+            "average_price": _r(p["price_usd"].mean(), 2) if len(p) else None,
+            "median_price": _r(p["price_usd"].median(), 2) if len(p) else None,
+            "average_catalogue_rating": _r(p["rating"].mean(), 2) if p["rating"].notna().any() else None,
+            "total_loves": int(p["loves_count"].sum()),
             "total_reviews": len(r),
-            "average_rating": _r(r["rating"].mean(), 2),
+            "average_rating": _r(r["rating"].mean(), 2) if len(r) else None,
             "five_star_share": _r((r["rating"] == 5).mean()) if len(r) else None,
             "recommend_rate": _r(rec.mean()) if len(rec) else None,
+            "recommend_answered": len(rec),
             "reviewed_products": int(r["product_id"].nunique()),
-            "first_review": _date(r["date"].min()),
-            "last_review": _date(r["date"].max()),
+            "first_review": _date(r["date"].min()) if len(r) else None,
+            "last_review": _date(r["date"].max()) if len(r) else None,
             "review_categories": scope,
             "raw_review_rows": ds.raw_review_rows,
             "duplicates_removed": ds.duplicates_removed,
         }
 
-    return ds.memo("overview", compute)
+    return ds.memo(("overview", category), compute)
 
 
 def category_mix(ds: Dataset) -> list[dict]:
@@ -101,13 +120,13 @@ def _rank_products(r: pd.DataFrame, limit: int) -> list[dict]:
     ]
 
 
-def top_products(ds: Dataset, limit: int) -> list[dict]:
-    return ds.memo(("top_products", limit), lambda: _rank_products(_reviews_with_products(ds), limit))
+def top_products(ds: Dataset, limit: int, category: str | None = None) -> list[dict]:
+    return ds.memo(("top_products", limit, category), lambda: _rank_products(scoped(ds, category)[1], limit))
 
 
-def top_brands(ds: Dataset, limit: int) -> list[dict]:
+def top_brands(ds: Dataset, limit: int, category: str | None = None) -> list[dict]:
     def compute():
-        r = _reviews_with_products(ds)
+        r = scoped(ds, category)[1]
         if r.empty:
             return []
         g = r.groupby("brand_name", observed=True).agg(
@@ -130,7 +149,7 @@ def top_brands(ds: Dataset, limit: int) -> list[dict]:
             for row in g.head(limit).itertuples()
         ]
 
-    return ds.memo(("top_brands", limit), compute)
+    return ds.memo(("top_brands", limit, category), compute)
 
 
 def rating_distribution(r: pd.DataFrame) -> list[dict]:
@@ -162,12 +181,12 @@ def review_trend(r: pd.DataFrame, granularity: str) -> list[dict]:
     ]
 
 
-def ratings(ds: Dataset) -> list[dict]:
-    return ds.memo("ratings", lambda: rating_distribution(ds.reviews))
+def ratings(ds: Dataset, category: str | None = None) -> list[dict]:
+    return ds.memo(("ratings", category), lambda: rating_distribution(scoped(ds, category)[1]))
 
 
-def trend(ds: Dataset, granularity: str) -> list[dict]:
-    return ds.memo(("trend", granularity), lambda: review_trend(ds.reviews, granularity))
+def trend(ds: Dataset, granularity: str, category: str | None = None) -> list[dict]:
+    return ds.memo(("trend", granularity, category), lambda: review_trend(scoped(ds, category)[1], granularity))
 
 
 # ----------------------------------------------------------------------------- filters
@@ -190,158 +209,8 @@ def filter_options(ds: Dataset) -> dict:
     return ds.memo("filter_options", compute)
 
 
-# ----------------------------------------------------------------------------- products
-PRODUCT_SORTS = {
-    "popular": ("loves_count", False),
-    "rating": ("rating", False),
-    "reviews": ("reviews", False),
-    "price_asc": ("price_usd", True),
-    "price_desc": ("price_usd", False),
-    "name": ("product_name", True),
-}
-
-
-def _product_table(ds: Dataset) -> pd.DataFrame:
-    def compute():
-        t = ds.products.copy()
-        counts = ds.reviews["product_id"].value_counts()
-        t["review_count"] = t["product_id"].map(counts).fillna(0).astype("int64")
-        return t
-
-    return ds.memo("product_table", compute)
-
-
-def list_products(
-    ds: Dataset,
-    q: str | None,
-    category: str | None,
-    sort: str,
-    page: int,
-    page_size: int,
-) -> dict:
-    t = _product_table(ds)
-    mask = np.ones(len(t), dtype=bool)
-    if q:
-        # Literal, case-insensitive match (never a regex).
-        mask &= (
-            t["product_name"].str.contains(q, case=False, regex=False, na=False)
-            | t["brand_name"].str.contains(q, case=False, regex=False, na=False)
-        ).to_numpy()
-    if category:
-        mask &= (t["primary_category"] == category).to_numpy()
-    column, ascending = PRODUCT_SORTS[sort]
-    matched = t[mask].sort_values(
-        [column, "product_id"], ascending=[ascending, True], na_position="last", kind="mergesort"
-    )
-    total = len(matched)
-    start = (page - 1) * page_size
-    window = matched.iloc[start : start + page_size]
-    return {
-        "items": [
-            {
-                "product_id": str(row.product_id),
-                "product_name": str(row.product_name),
-                "brand_name": str(row.brand_name),
-                "category": str(row.primary_category),
-                "subcategory": str(row.secondary_category),
-                "price": _r(row.price_usd, 2),
-                "rating": _r(row.rating, 2),
-                "catalogue_reviews": None if pd.isna(row.reviews) else int(row.reviews),
-                "loves": int(row.loves_count),
-                "review_count": int(row.review_count),
-            }
-            for row in window.itertuples()
-        ],
-        "page": page,
-        "page_size": page_size,
-        "total": total,
-        "total_pages": math.ceil(total / page_size) if total else 0,
-    }
+# Product listing lives in sephora/products.py.
 
 
 # ----------------------------------------------------------------------------- reviews
-def _filtered_reviews(
-    ds: Dataset, subcategory: str | None, year: int | None, rating: int | None
-) -> pd.DataFrame:
-    r = _reviews_with_products(ds)
-    mask = np.ones(len(r), dtype=bool)
-    if subcategory:
-        mask &= (r["secondary_category"] == subcategory).to_numpy()
-    if year:
-        mask &= (r["date"].dt.year == year).to_numpy()
-    if rating:
-        mask &= (r["rating"] == rating).to_numpy()
-    return r[mask]
-
-
-def review_summary(
-    ds: Dataset, subcategory: str | None, year: int | None, rating: int | None
-) -> dict:
-    def compute():
-        r = _filtered_reviews(ds, subcategory, year, rating)
-        rec = r["is_recommended"].dropna()
-        granularity = "month" if year else "year"
-        return {
-            "total_reviews": len(r),
-            "average_rating": _r(r["rating"].mean(), 2) if len(r) else None,
-            "recommend_rate": _r(rec.mean()) if len(rec) else None,
-            "reviewed_products": int(r["product_id"].nunique()),
-            "ratings": rating_distribution(r),
-            "granularity": granularity,
-            "trend": review_trend(r, granularity),
-            "top_products": _rank_products(r, 5),
-        }
-
-    return ds.memo(("review_summary", subcategory, year, rating), compute)
-
-
-REVIEW_SORTS = {
-    "recent": (["date"], [False]),
-    "helpful": (["total_pos_feedback_count", "date"], [False, False]),
-    "highest": (["rating", "date"], [False, False]),
-    "lowest": (["rating", "date"], [True, False]),
-}
-
-
-def list_reviews(
-    ds: Dataset,
-    subcategory: str | None,
-    year: int | None,
-    rating: int | None,
-    sort: str,
-    page: int,
-    page_size: int,
-) -> dict:
-    r = _filtered_reviews(ds, subcategory, year, rating)
-    columns, ascending = REVIEW_SORTS[sort]
-    # Stable sort with the row position as the final tie-break keeps pages deterministic.
-    ordered = r.sort_values(columns, ascending=ascending, kind="mergesort")
-    total = len(ordered)
-    start = (page - 1) * page_size
-    window = ordered.iloc[start : start + page_size]
-
-    def text(value):
-        return None if pd.isna(value) else str(value)
-
-    return {
-        "items": [
-            {
-                "product_id": str(row.product_id),
-                "product_name": str(row.product_name),
-                "brand_name": str(row.brand_name),
-                "subcategory": text(row.secondary_category),
-                "rating": int(row.rating),
-                "recommended": None if pd.isna(row.is_recommended) else bool(row.is_recommended),
-                "helpful_votes": int(row.total_pos_feedback_count),
-                "date": _date(row.date),
-                "title": text(row.review_title),
-                "text": text(row.review_text),
-                "skin_type": text(row.skin_type),
-            }
-            for row in window.itertuples()
-        ],
-        "page": page,
-        "page_size": page_size,
-        "total": total,
-        "total_pages": math.ceil(total / page_size) if total else 0,
-    }
+# Review filtering, summaries and lists live in sephora/reviews.py.

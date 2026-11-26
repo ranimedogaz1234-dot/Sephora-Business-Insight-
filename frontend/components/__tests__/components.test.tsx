@@ -10,7 +10,7 @@ import { Star } from "lucide-react";
 vi.mock("next/navigation", () => ({ usePathname: () => "/products" }));
 
 describe("Shell navigation", () => {
-  it("links the four pages and marks the current one", () => {
+  it("links every page and marks the current one", () => {
     render(
       <Shell>
         <p>content</p>
@@ -18,7 +18,7 @@ describe("Shell navigation", () => {
     );
     const nav = screen.getByRole("navigation", { name: "Main" });
     const links = within(nav).getAllByRole("link");
-    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/", "/products", "/reviews", "/about"]);
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/", "/products", "/brands", "/categories", "/reviews", "/customers", "/about"]);
     expect(within(nav).getByRole("link", { name: "Products" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Dashboard" })).not.toHaveAttribute("aria-current");
   });
