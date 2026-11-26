@@ -79,12 +79,35 @@ export function ErrorState({ message }: { message: string }) {
   );
 }
 
-export function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+interface PageHeaderProps {
+  eyebrow: string;
+  title: string;
+  description: ReactNode;
+  /** Buttons or links shown on the right (e.g. export, compare). */
+  actions?: ReactNode;
+}
+
+export function PageHeader({ eyebrow, title, description, actions }: PageHeaderProps) {
   return (
-    <header className="mb-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-burgundy">{eyebrow}</p>
-      <h1 className="mt-2 font-display text-3xl text-charcoal sm:text-4xl">{title}</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted sm:text-base">{description}</p>
+    <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-burgundy">{eyebrow}</p>
+        <h1 className="mt-2 font-display text-3xl text-charcoal sm:text-4xl">{title}</h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted sm:text-base">{description}</p>
+      </div>
+      {actions && <div className="flex flex-wrap items-center gap-2 print:hidden">{actions}</div>}
     </header>
+  );
+}
+
+/** Section heading inside a page (between groups of cards). */
+export function SectionTitle({ id, title, description }: { id?: string; title: string; description?: ReactNode }) {
+  return (
+    <div className="mb-4 mt-10">
+      <h2 id={id} className="font-display text-2xl text-charcoal">
+        {title}
+      </h2>
+      {description && <p className="mt-1 max-w-3xl text-sm text-muted">{description}</p>}
+    </div>
   );
 }

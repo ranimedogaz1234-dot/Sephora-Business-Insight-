@@ -7,6 +7,7 @@ import { PRODUCT_SORTS, hrefWith, parseProductParams, type SearchParams } from "
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/Card";
 import { FilterForm, SelectField } from "@/components/ui/Filters";
 import { Pagination } from "@/components/ui/Pagination";
+import { DataTable, Missing, Td, Th } from "@/components/ui/Table";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -100,43 +101,38 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <EmptyState message="No products match your search. Try another name or category." />
         ) : (
           <>
-            <div className="overflow-x-auto rounded-2xl border border-line bg-white shadow-card">
-              <table className="w-full min-w-[720px] text-sm">
-                <caption className="sr-only">Products</caption>
-                <thead className="bg-blush/60 text-left text-xs font-semibold uppercase tracking-wider text-burgundy">
-                  <tr>
-                    <th scope="col" className="px-5 py-3">Product</th>
-                    <th scope="col" className="px-5 py-3">Category</th>
-                    <th scope="col" className="px-5 py-3 text-right">Price</th>
-                    <th scope="col" className="px-5 py-3 text-right">Rating</th>
-                    <th scope="col" className="px-5 py-3 text-right">Reviews</th>
-                    <th scope="col" className="px-5 py-3 text-right">Loves</th>
+            <DataTable caption="Products">
+              <thead>
+                <tr>
+                  <Th>Product</Th>
+                  <Th>Category</Th>
+                  <Th align="right">Price</Th>
+                  <Th align="right">Rating</Th>
+                  <Th align="right">Reviews</Th>
+                  <Th align="right">Loves</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.data.items.map((p) => (
+                  <tr key={p.product_id} className="border-t border-line transition-colors hover:bg-blush/40">
+                    <Td>
+                      <p className="font-medium text-charcoal">{p.product_name}</p>
+                      <p className="text-xs text-muted">{p.brand_name}</p>
+                    </Td>
+                    <Td className="text-muted">
+                      {p.category}
+                      <span className="block text-xs">{p.subcategory}</span>
+                    </Td>
+                    <Td align="right">{formatUsd(p.price)}</Td>
+                    <Td align="right">{p.rating === null ? <Missing label="No catalogue rating" /> : `★ ${formatRating(p.rating)}`}</Td>
+                    <Td align="right">
+                      {p.catalogue_reviews === null ? <Missing label="No catalogue review count" /> : formatInteger(p.catalogue_reviews)}
+                    </Td>
+                    <Td align="right">{formatInteger(p.loves)}</Td>
                   </tr>
-                </thead>
-                <tbody>
-                  {result.data.items.map((p) => (
-                    <tr key={p.product_id} className="border-t border-line transition-colors hover:bg-blush/40">
-                      <td className="px-5 py-3.5">
-                        <p className="font-medium text-charcoal">{p.product_name}</p>
-                        <p className="text-xs text-muted">{p.brand_name}</p>
-                      </td>
-                      <td className="px-5 py-3.5 text-muted">
-                        {p.category}
-                        <span className="block text-xs">{p.subcategory}</span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right tabular-nums text-charcoal">{formatUsd(p.price)}</td>
-                      <td className="px-5 py-3.5 text-right tabular-nums text-charcoal">
-                        {p.rating === null ? <span className="text-muted">—</span> : `★ ${formatRating(p.rating)}`}
-                      </td>
-                      <td className="px-5 py-3.5 text-right tabular-nums text-charcoal">
-                        {p.catalogue_reviews === null ? <span className="text-muted">—</span> : formatInteger(p.catalogue_reviews)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right tabular-nums text-charcoal">{formatInteger(p.loves)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </DataTable>
             <p className="mt-3 text-xs text-muted">Rating and reviews are Sephora&apos;s catalogue figures for each product.</p>
             <Pagination
               page={params.page}
