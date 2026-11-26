@@ -27,6 +27,7 @@ def test_listing_flags(client, flag, expected):
 def test_performance_indicators(client):
     items = {p["product_id"]: p for p in client.get("/api/products").json()["items"]}
     # Skincare mean catalogue rating = 4.0
+    assert items["P1"]["brand_id"] == 1
     assert items["P1"]["rating_vs_category"] == 0.5
     assert items["P3"]["rating_vs_category"] == -0.5
     assert items["P5"]["rating_vs_category"] is None

@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
+from sephora import analytics, brands, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -210,6 +210,46 @@ def product_details(product_id: Annotated[str, PathParam(pattern=catalogue.PRODU
     details = catalogue.product_details(get_dataset(), product_id)
     if details is None:
         raise HTTPException(status_code=404, detail="Product not found")
+    return details
+
+
+# ----------------------------------------------------------------------------- brands
+MinProducts = Annotated[int, Query(ge=1, le=500)]
+
+
+@app.get("/api/brands")
+def brand_list(
+    q: SearchText = None,
+    category: Name = None,
+    min_products: MinProducts = brands.DEFAULT_MIN_PRODUCTS,
+    sort: Literal[tuple(brands.SORTS)] = "products",  # type: ignore[valid-type]
+    page: PageNo = 1,
+    page_size: Annotated[int, Query(ge=1, le=50)] = 20,
+):
+    """Brand directory and rankings. Review metrics are null for brands without reviews."""
+    ds = get_dataset()
+    return brands.list_brands(ds, q.strip() if q else None, _category(ds, category), min_products, sort, page, page_size)
+
+
+@app.get("/api/brands/summary")
+def brand_summary(category: Name = None, min_products: MinProducts = brands.DEFAULT_MIN_PRODUCTS):
+    """Brand counts, size distribution, top-10 rankings and median price against catalogue rating."""
+    ds = get_dataset()
+    return brands.brands_summary(ds, _category(ds, category), min_products)
+
+
+@app.get("/api/brands/options")
+def brand_options():
+    """Every brand with its ID (brand names contain characters such as / and &)."""
+    return brands.brand_options(get_dataset())
+
+
+@app.get("/api/brands/{brand_id}")
+def brand_details(brand_id: Annotated[int, PathParam(ge=1, le=10**9)]):
+    """One brand: metrics and ranks, categories, price quartiles, top products and review statistics."""
+    details = brands.brand_details(get_dataset(), brand_id)
+    if details is None:
+        raise HTTPException(status_code=404, detail="Brand not found")
     return details
 
 

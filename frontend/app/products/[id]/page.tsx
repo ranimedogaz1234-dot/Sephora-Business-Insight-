@@ -81,6 +81,11 @@ function Attributes({ p }: { p: ProductDetail }) {
     <Card>
       <h2 className="text-base font-semibold text-charcoal">Attributes</h2>
       <dl className="mt-3">
+        <Fact label="Brand">
+          <Link href={`/brands/${p.brand_id}`} className="text-burgundy hover:underline">
+            {p.brand_name}
+          </Link>
+        </Fact>
         <Fact label="Category">
           {[p.category, p.subcategory, p.tertiary_category].filter(Boolean).join(" › ")}
         </Fact>

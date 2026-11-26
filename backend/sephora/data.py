@@ -31,11 +31,12 @@ REVIEW_FILES = (
     "reviews_1250-end.csv",
 )
 FILES = (PRODUCT_FILE, *REVIEW_FILES)
-CACHE_VERSION = 3  # bump whenever the prepared columns change
+CACHE_VERSION = 4  # bump whenever the prepared columns change
 
 PRODUCT_COLUMNS = {
     "product_id": "string",
     "product_name": "string",
+    "brand_id": "int64",
     "brand_name": "string",
     "primary_category": "string",
     "secondary_category": "string",

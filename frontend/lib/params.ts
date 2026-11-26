@@ -133,3 +133,38 @@ export function parseDashboardParams(sp: SearchParams, options: FilterOptions | 
   const category = one(sp.category);
   return { category: category && options?.categories.some((c) => c.name === category) ? category : undefined };
 }
+
+export const BRAND_SORTS = {
+  products: "Most products",
+  loves: "Most loved",
+  rating: "Highest catalogue rating",
+  reviews: "Most customer reviews",
+  recommend: "Highest recommendation rate",
+  price_desc: "Median price: high to low",
+  price_asc: "Median price: low to high",
+  name: "Name A–Z",
+} as const;
+export type BrandSort = keyof typeof BRAND_SORTS;
+export const BRAND_MIN_PRODUCTS = [5, 10, 25, 50] as const;
+
+export interface BrandParams {
+  q?: string;
+  category?: string;
+  min_products?: number;
+  sort: BrandSort;
+  page: number;
+}
+
+export function parseBrandParams(sp: SearchParams, options: FilterOptions): BrandParams {
+  const q = one(sp.q)?.trim().slice(0, 80);
+  const category = one(sp.category);
+  const sort = one(sp.sort);
+  const min = Number(one(sp.min_products));
+  return {
+    q: q && q.length >= 2 ? q : undefined,
+    category: category && options.categories.some((c) => c.name === category) ? category : undefined,
+    min_products: (BRAND_MIN_PRODUCTS as readonly number[]).includes(min) ? min : undefined,
+    sort: sort && sort in BRAND_SORTS ? (sort as BrandSort) : "products",
+    page: page(one(sp.page)),
+  };
+}
