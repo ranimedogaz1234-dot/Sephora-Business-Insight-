@@ -8,6 +8,9 @@ import { REVIEW_SORTS, hrefWith, parseReviewParams, type SearchParams } from "@/
 import { Card, ChartCard, EmptyState, ErrorState, KpiCard, PageHeader } from "@/components/ui/Card";
 import { FilterForm, SelectField } from "@/components/ui/Filters";
 import { Pagination } from "@/components/ui/Pagination";
+import { SegmentedLinks } from "@/components/ui/Segmented";
+import { Stars } from "@/components/ui/Stars";
+import { ScopeNote } from "@/components/ui/ScopeNote";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { RankedBars } from "@/components/charts/RankedBars";
 import { TrendChart } from "@/components/charts/TrendChart";
@@ -20,21 +23,6 @@ const HEADER = {
   title: "What customers say",
   description: "Explore ratings, review activity and real customer reviews. Filter by category, year or star rating.",
 };
-
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span role="img" aria-label={`${rating} out of 5 stars`} className="inline-flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          aria-hidden
-          className={`h-4 w-4 ${i <= rating ? "fill-burgundy text-burgundy" : "fill-none text-line"}`}
-          strokeWidth={1.5}
-        />
-      ))}
-    </span>
-  );
-}
 
 function ReviewCard({ r }: { r: ReviewRow }) {
   return (
@@ -128,6 +116,9 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           </Link>
         )}
       </FilterForm>
+      <ScopeNote className="mt-4">
+        Customer reviews in this dataset cover Skincare products only. Ratings are the stars each reviewer gave.
+      </ScopeNote>
 
       {!summary.ok ? (
         <div className="mt-6">
@@ -197,24 +188,12 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           <h2 id="latest" className="font-display text-2xl text-charcoal">
             Customer reviews
           </h2>
-          <nav aria-label="Sort reviews" className="flex flex-wrap gap-2">
-            {Object.entries(REVIEW_SORTS).map(([value, label]) => {
-              const active = params.sort === value;
-              return (
-                <Link
-                  key={value}
-                  href={hrefWith("/reviews", params, { sort: value === "recent" ? undefined : value, page: 1 })}
-                  aria-current={active ? "true" : undefined}
-                  scroll={false}
-                  className={`h-9 rounded-full px-4 text-sm leading-9 transition-colors ${
-                    active ? "bg-burgundy text-white" : "border border-line text-muted hover:bg-blush hover:text-burgundy"
-                  }`}
-                >
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
+          <SegmentedLinks
+            label="Sort reviews"
+            options={REVIEW_SORTS}
+            active={params.sort}
+            href={(value) => hrefWith("/reviews", params, { sort: value === "recent" ? undefined : value, page: 1 })}
+          />
         </div>
         {!list.ok ? (
           <ErrorState message={list.error} />
