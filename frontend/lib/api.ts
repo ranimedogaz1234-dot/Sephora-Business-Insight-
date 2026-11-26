@@ -240,6 +240,47 @@ export interface BrandDetails {
   } | null;
 }
 
+export interface CategoryNode {
+  name: string;
+  products: number;
+  share: number | null;
+  brands: number;
+  median_price: number | null;
+  p25_price: number | null;
+  p75_price: number | null;
+  average_price: number | null;
+  average_catalogue_rating: number | null;
+  rated_products: number;
+  total_loves: number;
+  /** Median loves per product: the main popularity measure (engagement, not sales). */
+  median_loves: number | null;
+  loves_per_product: number | null;
+  catalogue_reviews_per_product: number | null;
+  exclusive_share: number | null;
+  review_rows: number;
+  average_review_rating: number | null;
+  recommend_rate: number | null;
+  can_drill: boolean;
+}
+
+export interface CategoryAnalytics {
+  level: "primary_category" | "secondary_category" | "tertiary_category";
+  path: string[];
+  totals: {
+    products: number;
+    brands: number;
+    children: number;
+    median_price: number | null;
+    average_catalogue_rating: number | null;
+    median_loves: number | null;
+    review_rows: number;
+  };
+  children: CategoryNode[];
+  most_loved: ProductRow[];
+  best_rated: ProductRow[];
+  min_reviews_for_ranking: number;
+}
+
 export interface ProductOptions {
   brands: NamedCount[];
   subcategories: { category: string; name: string; count: number }[];
@@ -360,6 +401,7 @@ export const api = {
   products: (q: Query) => get<Page<ProductRow>>("/api/products", q),
   productSummary: (q: Query) => get<ProductSummary>("/api/products/summary", q),
   productOptions: () => get<ProductOptions>("/api/products/options"),
+  categoryAnalytics: (q: Query) => get<CategoryAnalytics>("/api/category-analytics", q),
   brands: (q: Query) => get<Page<BrandRow>>("/api/brands", q),
   brandSummary: (q: Query) => get<BrandSummary>("/api/brands/summary", q),
   brandOptions: () => get<{ brand_id: number; brand_name: string; products: number }[]>("/api/brands/options"),
