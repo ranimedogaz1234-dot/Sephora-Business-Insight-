@@ -1,5 +1,5 @@
 /** Chart preparation and one-line takeaways. Every sentence restates a computed figure. */
-import type { CategoryShare, RankedBrand, RankedProduct, RatingBucket, RecommendationPatterns, TrendPoint } from "@/lib/api";
+import type { CategoryShare, RankedBrand, RankedProduct, RatingBucket, RecommendationPatterns, SentimentSummary, SentimentTopics, TrendPoint } from "@/lib/api";
 import { formatInteger, formatPercent, formatPeriod } from "@/lib/format";
 import { categorical, colors, starRamp } from "@/lib/theme";
 import type { Slice } from "@/components/charts/DonutChart";
@@ -112,4 +112,28 @@ export function correlationLabel(rho: number | null): string {
   if (a < 0.1) return "no meaningful relationship";
   const strength = a < 0.3 ? "weak" : a < 0.5 ? "moderate" : "strong";
   return `a ${strength} ${rho > 0 ? "positive" : "negative"} relationship`;
+}
+
+/** Signed compound score with a true minus sign, e.g. "+0.42" or "−0.13". */
+export function formatCompound(value: number | null): string {
+  if (value === null) return "—";
+  const fixed = Math.abs(value).toFixed(2);
+  return value > 0 ? `+${fixed}` : value < 0 ? `−${fixed}` : fixed;
+}
+
+/** The topic whose mentions are most often negative, among topics in at least `minShare` of reviews. */
+export function mostNegativeTopic(aspects: SentimentTopics["aspects"], minShare = 0.02): SentimentTopics["aspects"][number] | undefined {
+  return aspects
+    .filter((a) => a.negative !== null && (a.share ?? 0) >= minShare)
+    .sort((a, b) => (b.negative ?? 0) - (a.negative ?? 0) || b.mentions - a.mentions)[0];
+}
+
+/** How text sentiment moved between the first and last year with at least `minReviews` reviews. */
+export function sentimentTrendInsight(trend: SentimentSummary["trend"], minReviews = 1000): string | undefined {
+  const years = trend.filter((t) => t.reviews >= minReviews && t.positive !== null);
+  if (years.length < 2) return undefined;
+  const [first, last] = [years[0], years[years.length - 1]];
+  const change = (last.positive! - first.positive!) * 100;
+  const direction = Math.abs(change) < 1 ? "stayed about the same" : change > 0 ? `rose ${change.toFixed(1)} points` : `fell ${Math.abs(change).toFixed(1)} points`;
+  return `Positive texts ${direction}: ${formatPercent(first.positive!)} in ${first.period}, ${formatPercent(last.positive!)} in ${last.period} (years with ${formatInteger(minReviews)}+ reviews).`;
 }

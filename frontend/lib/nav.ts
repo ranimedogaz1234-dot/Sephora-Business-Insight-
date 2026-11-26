@@ -3,7 +3,7 @@
  * breadcrumbs all read this list, so a page only appears here once it exists.
  */
 import type { LucideIcon } from "lucide-react";
-import { BadgeDollarSign, FolderTree, Gem, Info, UsersRound, LayoutDashboard, MessageSquareHeart, ShoppingBag } from "lucide-react";
+import { BadgeDollarSign, FolderTree, Gem, Info, UsersRound, LayoutDashboard, MessageSquareHeart, ShoppingBag, Smile } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -26,6 +26,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: "/categories", label: "Categories", icon: FolderTree },
       { href: "/pricing", label: "Pricing", icon: BadgeDollarSign },
       { href: "/reviews", label: "Reviews", icon: MessageSquareHeart },
+      { href: "/sentiment", label: "Sentiment", icon: Smile },
     ],
   },
   { title: "Customers", items: [{ href: "/customers", label: "Customer insights", icon: UsersRound }] },

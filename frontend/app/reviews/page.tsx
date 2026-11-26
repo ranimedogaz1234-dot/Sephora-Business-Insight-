@@ -137,7 +137,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
       <ScopeNote className="mt-4">
         Customer reviews in this dataset cover Skincare products only. &ldquo;Positive&rdquo;, &ldquo;neutral&rdquo; and
         &ldquo;negative&rdquo; on this page group the <strong>star ratings</strong> (4–5, 3, 1–2); text sentiment from a
-        language model is on the Sentiment page. Search is a literal, case-insensitive match in titles and texts.
+        lexicon-based model is on the Sentiment page. Search is a literal, case-insensitive match in titles and texts.
       </ScopeNote>
 
       {!summary.ok ? (
