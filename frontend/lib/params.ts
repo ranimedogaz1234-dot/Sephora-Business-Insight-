@@ -250,3 +250,20 @@ export function parseCustomerParams(sp: SearchParams, options: FilterOptions): C
     attribute: attribute && attribute in REVIEWER_ATTRIBUTES ? (attribute as AttributeKey) : "skin_type",
   };
 }
+
+export const SENTIMENT_LEVELS = { product: "Products", brand: "Brands" } as const;
+export type SentimentLevel = keyof typeof SENTIMENT_LEVELS;
+
+export interface SentimentParams {
+  subcategory?: string;
+  level: SentimentLevel;
+}
+
+export function parseSentimentParams(sp: SearchParams, options: FilterOptions): SentimentParams {
+  const subcategory = one(sp.subcategory);
+  const level = one(sp.level);
+  return {
+    subcategory: subcategory && options.review_subcategories.some((s) => s.name === subcategory) ? subcategory : undefined,
+    level: level === "brand" ? "brand" : "product",
+  };
+}

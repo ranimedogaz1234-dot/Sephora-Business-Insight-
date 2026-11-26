@@ -459,6 +459,104 @@ export interface Observation {
   evidence: Record<string, number | string | null>;
 }
 
+/* ----------------------------------------------------------------------------- sentiment */
+export type SentimentLabel = "negative" | "neutral" | "positive";
+export type SentimentShares = Record<SentimentLabel, number | null>;
+
+export interface SentimentSummary {
+  model: string;
+  model_version: string;
+  reviews: number;
+  shares: SentimentShares;
+  counts: Record<SentimentLabel, number>;
+  /** Mean adapted VADER compound score, from -1 (negative) to 1 (positive). */
+  average_compound: number | null;
+  /** Share of reviews whose text label matches their star group (1–2, 3, 4–5★). */
+  agreement_with_stars: number | null;
+  trend: ({ period: string; reviews: number; average_compound: number | null } & SentimentShares)[];
+  by_stars: ({ rating: number; reviews: number } & SentimentShares)[];
+  by_subcategory: { name: string; reviews: number; positive: number; negative: number; average_compound: number }[];
+}
+
+export interface SentimentRankRow {
+  reviews: number;
+  positive: number;
+  negative: number;
+  average_compound: number;
+  average_rating: number;
+  brand_name: string;
+  product_id?: string;
+  product_name?: string;
+}
+
+export interface SentimentRankings {
+  level: "product" | "brand";
+  min_reviews: number;
+  eligible: number;
+  most_positive: SentimentRankRow[];
+  most_negative: SentimentRankRow[];
+}
+
+export interface SentimentExample extends ReviewCardData {
+  product_id: string;
+  product_name: string;
+  brand_name: string;
+  compound: number;
+  sentiment: SentimentLabel;
+}
+
+export type SentimentExamples = Record<SentimentLabel | "disagreements", SentimentExample[]>;
+
+export interface SentimentTerm {
+  term: string;
+  reviews: number;
+  share: number;
+  log_ratio: number;
+}
+
+export interface SentimentTopics {
+  aspects: ({ aspect: string; pattern: string; mentions: number; share: number | null; average_rating: number | null } & SentimentShares)[];
+  words: {
+    sample_size: number;
+    classes: Partial<Record<"positive" | "negative", {
+      reviews: number;
+      frequent_words: SentimentTerm[];
+      distinctive_words: SentimentTerm[];
+      frequent_phrases: SentimentTerm[];
+      distinctive_phrases: SentimentTerm[];
+    }>>;
+  };
+}
+
+export interface SentimentMetrics {
+  accuracy: number;
+  macro_f1: number;
+  cohen_kappa: number | null;
+  per_class: { label: SentimentLabel; precision: number; recall: number; f1: number; support: number }[];
+  /** Rows: star group (negative, neutral, positive); columns: text label in the same order. */
+  confusion: number[][];
+}
+
+export interface SentimentMethodology {
+  model: string;
+  model_version: string;
+  threshold: number;
+  title_weight: number;
+  domain_lexicon: Record<string, number>;
+  phrases: { pattern: string; replacement: string }[];
+  reviews: number;
+  validation: {
+    sample_size: number;
+    reference: string;
+    base_vader: SentimentMetrics | null;
+    adapted: SentimentMetrics | null;
+    full_data_agreement: number;
+  };
+  seconds_scoring: number;
+  seconds_total: number;
+  workers: number;
+}
+
 export type Query = Record<string, string | number | undefined | null>;
 
 export function apiBase(): string {
@@ -489,7 +587,11 @@ export async function get<T>(path: string, query?: Query): Promise<T> {
   } catch {
     throw new ApiError("The analytics service could not be reached.");
   }
-  if (response.status === 503) throw new ApiError("The dataset is not available on the server.");
+  if (response.status === 503) {
+    // The backend's 503 details are short fixed messages (no paths), so they can be shown as they are.
+    const detail = await response.json().then((b) => b?.detail, () => undefined);
+    throw new ApiError(typeof detail === "string" && detail !== "Dataset is not available" ? `${detail}.` : "The dataset is not available on the server.");
+  }
   if (response.status === 404) throw new NotFoundError("Not found.");
   if (!response.ok) throw new ApiError(`The analytics service returned an error (${response.status}).`);
   return (await response.json()) as T;
@@ -521,6 +623,11 @@ export const api = {
   reviewSummary: (q: Query) => get<ReviewSummary>("/api/reviews/summary", q),
   reviews: (q: Query) => get<Page<ReviewRow>>("/api/reviews", q),
   reviewOptions: () => get<{ brands: string[]; skin_types: string[] }>("/api/reviews/options"),
+  sentiment: (q: Query) => get<SentimentSummary>("/api/sentiment", q),
+  sentimentRankings: (q: Query) => get<SentimentRankings>("/api/sentiment/rankings", q),
+  sentimentExamples: (q: Query) => get<SentimentExamples>("/api/sentiment/examples", q),
+  sentimentTopics: () => get<SentimentTopics>("/api/sentiment/topics"),
+  sentimentMethodology: () => get<SentimentMethodology>("/api/sentiment/methodology"),
 };
 
 /** Run a request without letting its failure break the whole page. */
