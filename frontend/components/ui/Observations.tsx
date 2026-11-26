@@ -33,6 +33,11 @@ export function ObservationList({ items }: { items: Observation[] }) {
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">{TONE_LABEL[o.tone]}</p>
               <p className="text-sm font-semibold text-charcoal">{o.title}</p>
               <p className="mt-0.5 text-sm text-muted">{o.detail}</p>
+              {o.action && (
+                <p className="mt-2 text-sm text-charcoal">
+                  <span className="font-medium text-burgundy">Suggested next step:</span> {o.action}
+                </p>
+              )}
             </div>
           </li>
         );
