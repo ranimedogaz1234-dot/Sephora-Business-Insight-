@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MessageSquareHeart, Star, ThumbsUp } from "lucide-react";
-import { api, attempt, type ReviewRow } from "@/lib/api";
-import { formatCompact, formatDate, formatInteger, formatPercent, formatRating, truncate } from "@/lib/format";
+import { api, attempt } from "@/lib/api";
+import { formatCompact, formatInteger, formatPercent, formatRating } from "@/lib/format";
 import { ratingSlices, topProductInsight, trendInsight } from "@/lib/insights";
 import { REVIEW_SORTS, hrefWith, parseReviewParams, type SearchParams } from "@/lib/params";
-import { Card, ChartCard, EmptyState, ErrorState, KpiCard, PageHeader } from "@/components/ui/Card";
+import { ChartCard, EmptyState, ErrorState, KpiCard, PageHeader } from "@/components/ui/Card";
 import { FilterForm, SelectField } from "@/components/ui/Filters";
 import { Pagination } from "@/components/ui/Pagination";
 import { SegmentedLinks } from "@/components/ui/Segmented";
-import { Stars } from "@/components/ui/Stars";
+import { ReviewCard } from "@/components/ui/ReviewCard";
 import { ScopeNote } from "@/components/ui/ScopeNote";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { RankedBars } from "@/components/charts/RankedBars";
@@ -23,37 +23,6 @@ const HEADER = {
   title: "What customers say",
   description: "Explore ratings, review activity and real customer reviews. Filter by category, year or star rating.",
 };
-
-function ReviewCard({ r }: { r: ReviewRow }) {
-  return (
-    <Card className="flex flex-col">
-      <div className="flex items-center justify-between gap-3">
-        <Stars rating={r.rating} />
-        <time dateTime={r.date} className="text-xs text-muted">
-          {formatDate(r.date)}
-        </time>
-      </div>
-      {r.title && <h3 className="mt-3 font-semibold text-charcoal">{r.title}</h3>}
-      <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">
-        {r.text ? truncate(r.text, 280) : <em>No review text.</em>}
-      </p>
-      <div className="mt-4 border-t border-line pt-3 text-xs text-muted">
-        <p className="font-medium text-charcoal">{r.product_name}</p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>{r.brand_name}</span>
-          {r.recommended !== null && (
-            <span className={r.recommended ? "text-burgundy" : ""}>{r.recommended ? "Recommends" : "Does not recommend"}</span>
-          )}
-          {r.helpful_votes > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <ThumbsUp aria-hidden className="h-3 w-3" /> {formatInteger(r.helpful_votes)}
-            </span>
-          )}
-        </p>
-      </div>
-    </Card>
-  );
-}
 
 export default async function ReviewsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const options = await attempt(api.filters());
@@ -203,7 +172,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {list.data.items.map((r, i) => (
-                <ReviewCard key={`${r.product_id}-${r.date}-${i}`} r={r} />
+                <ReviewCard key={`${r.product_id}-${r.date}-${i}`} r={r} product={{ id: r.product_id, name: r.product_name, brand: r.brand_name }} />
               ))}
             </div>
             <Pagination

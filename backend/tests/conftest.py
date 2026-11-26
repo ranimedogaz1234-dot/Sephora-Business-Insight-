@@ -27,6 +27,16 @@ PRODUCT_EXTRA = {
     "online_only": [0, 1, 0, 0, 1],
     "out_of_stock": [0, 0, 0, 0, 1],
     "sephora_exclusive": [1, 1, 0, 0, 0],
+    "size": ["1 oz/ 30 mL", "", "", "", ""],
+    "variation_type": ["Size", "", "", "Color", ""],
+    "variation_value": ["1 oz/ 30 mL", "", "", "Ruby", ""],
+    "variation_desc": ["", "", "", "bright red", ""],
+    "value_price_usd": [55.0, "", "", "", ""],
+    "child_count": [2, 0, 0, 5, 0],
+    "child_min_price": [20.0, "", "", 30.0, ""],
+    "child_max_price": [40.0, "", "", 30.0, ""],
+    "highlights": ["['Vegan', 'Good for: Dryness']", "", "", "not a list", ""],
+    "ingredients": ["['Water, Glycerin, Niacinamide.']", "", "", "", ""],
 }
 PRODUCT_HEADER = PRODUCT_HEADER + list(PRODUCT_EXTRA)
 PRODUCTS = [row + [values[i] for values in PRODUCT_EXTRA.values()] for i, row in enumerate(PRODUCTS)]

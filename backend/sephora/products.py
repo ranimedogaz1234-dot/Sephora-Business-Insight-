@@ -250,3 +250,126 @@ def product_options(ds: Dataset) -> dict:
         }
 
     return ds.memo("product_options", compute)
+
+
+# ----------------------------------------------------------------------------- details
+PRODUCT_ID = r"^P\d{1,12}$"
+RELATED_LIMIT = 6
+
+
+def parse_list(value) -> list[str]:
+    """Parse a catalogue list such as "['Vegan', 'Hydrating']" without executing code.
+
+    ``ast.literal_eval`` only accepts Python literals. Anything that is not a list of
+    strings is returned as one plain string (or dropped when empty).
+    """
+    import ast
+
+    if value is None or pd.isna(value) or not str(value).strip():
+        return []
+    text = str(value).strip()
+    try:
+        parsed = ast.literal_eval(text)
+    except (ValueError, SyntaxError, MemoryError, RecursionError):
+        return [text]
+    if isinstance(parsed, (list, tuple)) and all(isinstance(x, str) for x in parsed):
+        return [x.strip() for x in parsed if x.strip()]
+    return [text]
+
+
+def _text(v) -> str | None:
+    return None if v is None or pd.isna(v) or not str(v).strip() else str(v)
+
+
+def product_details(ds: Dataset, product_id: str) -> dict | None:
+    """Everything known about one product: catalogue attributes, indicators, review statistics
+    (only when the review files contain the product), and related products."""
+    from sephora.analytics import _date, rating_distribution, review_trend
+
+    t = product_table(ds)
+    match = t[t["product_id"] == product_id]
+    if match.empty:
+        return None
+    row = match.iloc[0]
+    info = product_row(next(match.itertuples()))
+    info.update({
+        "tertiary_category": _text(row["tertiary_category"]),
+        "size": _text(row["size"]),
+        "variation_type": _text(row["variation_type"]),
+        "variation_value": _text(row["variation_value"]),
+        "variation_desc": _text(row["variation_desc"]),
+        "value_price": _r(row["value_price_usd"], 2),
+        "variants": int(row["child_count"]),
+        "variant_min_price": _r(row["child_min_price"], 2),
+        "variant_max_price": _r(row["child_max_price"], 2),
+        "highlights": parse_list(row["highlights"]),
+        "ingredients": parse_list(row["ingredients"]),
+        "category_rating": _r(row["category_rating"], 2),
+    })
+
+    r = ds.reviews[ds.reviews["product_id"] == product_id]
+    reviews = None
+    if len(r):
+        rec = r["is_recommended"].dropna()
+        years = r["date"].dt.year.nunique()
+        granularity = "year" if years > 3 else "month"
+        by_skin = (
+            r.dropna(subset=["skin_type"])
+            .groupby("skin_type", observed=True)
+            .agg(count=("rating", "size"), average_rating=("rating", "mean"), recommend_rate=("is_recommended", "mean"))
+            .reset_index()
+            .sort_values(["count", "skin_type"], ascending=[False, True])
+        )
+        helpful = r.sort_values(["total_pos_feedback_count", "date"], ascending=[False, False], kind="mergesort").head(3)
+
+        def card(x):
+            return {
+                "rating": int(x.rating),
+                "recommended": None if pd.isna(x.is_recommended) else bool(x.is_recommended),
+                "helpful_votes": int(x.total_pos_feedback_count),
+                "date": _date(x.date),
+                "title": _text(x.review_title),
+                "text": _text(x.review_text),
+                "skin_type": _text(x.skin_type),
+            }
+
+        reviews = {
+            "count": len(r),
+            "average_rating": _r(r["rating"].mean(), 2),
+            "recommend_rate": _r(rec.mean()) if len(rec) else None,
+            "recommend_answered": len(rec),
+            "first_review": _date(r["date"].min()),
+            "last_review": _date(r["date"].max()),
+            "ratings": rating_distribution(r),
+            "granularity": granularity,
+            "trend": review_trend(r, granularity),
+            "by_skin_type": [
+                {
+                    "name": str(s.skin_type),
+                    "count": int(s.count),
+                    "average_rating": _r(s.average_rating, 2),
+                    "recommend_rate": _r(s.recommend_rate),
+                }
+                for s in by_skin.itertuples()
+            ],
+            "most_helpful": [card(x) for x in helpful.itertuples()],
+        }
+
+    # Related: same subcategory, price within half to double, most loved first.
+    price = float(row["price_usd"])
+    peers = t[
+        (t["secondary_category"] == row["secondary_category"])
+        & (t["primary_category"] == row["primary_category"])
+        & (t["product_id"] != product_id)
+        & t["price_usd"].between(price / 2, price * 2)
+    ].sort_values(["loves_count", "product_id"], ascending=[False, True])
+    brand = t[(t["brand_name"] == row["brand_name"]) & (t["product_id"] != product_id)].sort_values(
+        ["loves_count", "product_id"], ascending=[False, True]
+    )
+    return {
+        "product": info,
+        "reviews": reviews,
+        "related": [product_row(x) for x in peers.head(RELATED_LIMIT).itertuples()],
+        "same_brand": [product_row(x) for x in brand.head(4).itertuples()],
+        "related_rule": "Same subcategory, price between half and double, most loved first",
+    }
