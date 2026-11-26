@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, brands, categories as category_tree, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
+from sephora import analytics, brands, categories as category_tree, customers, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -267,6 +267,30 @@ def category_analytics(primary: Name = None, secondary: Name = None):
             raise HTTPException(status_code=422, detail="secondary requires primary")
         _check(secondary, paths[primary], "subcategory")
     return category_tree.category_analytics(ds, primary, secondary)
+
+
+# ----------------------------------------------------------------------------- customers
+Attribute = Literal["skin_type", "skin_tone", "eye_color", "hair_color"]
+
+
+def _review_subcategory(ds, subcategory: str | None) -> str | None:
+    _check(subcategory, [s["name"] for s in analytics.filter_options(ds)["review_subcategories"]], "subcategory")
+    return subcategory
+
+
+@app.get("/api/customers")
+def customer_summary(subcategory: Name = None):
+    """Distribution, coverage, ratings and recommendations by reviewer attribute.
+    Shares are of reviews that answered, not of people; no reviewer IDs are returned."""
+    ds = get_dataset()
+    return customers.customer_summary(ds, _review_subcategory(ds, subcategory))
+
+
+@app.get("/api/customers/preferences")
+def customer_preferences(attribute: Attribute = "skin_type", subcategory: Name = None):
+    """Subcategories over-represented in each group's reviews and the products each group rates highest."""
+    ds = get_dataset()
+    return customers.preferences(ds, attribute, _review_subcategory(ds, subcategory))
 
 
 # ----------------------------------------------------------------------------- reviews
