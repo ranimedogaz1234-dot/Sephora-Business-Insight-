@@ -209,73 +209,7 @@ def filter_options(ds: Dataset) -> dict:
     return ds.memo("filter_options", compute)
 
 
-# ----------------------------------------------------------------------------- products
-PRODUCT_SORTS = {
-    "popular": ("loves_count", False),
-    "rating": ("rating", False),
-    "reviews": ("reviews", False),
-    "price_asc": ("price_usd", True),
-    "price_desc": ("price_usd", False),
-    "name": ("product_name", True),
-}
-
-
-def _product_table(ds: Dataset) -> pd.DataFrame:
-    def compute():
-        t = ds.products.copy()
-        counts = ds.reviews["product_id"].value_counts()
-        t["review_count"] = t["product_id"].map(counts).fillna(0).astype("int64")
-        return t
-
-    return ds.memo("product_table", compute)
-
-
-def list_products(
-    ds: Dataset,
-    q: str | None,
-    category: str | None,
-    sort: str,
-    page: int,
-    page_size: int,
-) -> dict:
-    t = _product_table(ds)
-    mask = np.ones(len(t), dtype=bool)
-    if q:
-        # Literal, case-insensitive match (never a regex).
-        mask &= (
-            t["product_name"].str.contains(q, case=False, regex=False, na=False)
-            | t["brand_name"].str.contains(q, case=False, regex=False, na=False)
-        ).to_numpy()
-    if category:
-        mask &= (t["primary_category"] == category).to_numpy()
-    column, ascending = PRODUCT_SORTS[sort]
-    matched = t[mask].sort_values(
-        [column, "product_id"], ascending=[ascending, True], na_position="last", kind="mergesort"
-    )
-    total = len(matched)
-    start = (page - 1) * page_size
-    window = matched.iloc[start : start + page_size]
-    return {
-        "items": [
-            {
-                "product_id": str(row.product_id),
-                "product_name": str(row.product_name),
-                "brand_name": str(row.brand_name),
-                "category": str(row.primary_category),
-                "subcategory": str(row.secondary_category),
-                "price": _r(row.price_usd, 2),
-                "rating": _r(row.rating, 2),
-                "catalogue_reviews": None if pd.isna(row.reviews) else int(row.reviews),
-                "loves": int(row.loves_count),
-                "review_count": int(row.review_count),
-            }
-            for row in window.itertuples()
-        ],
-        "page": page,
-        "page_size": page_size,
-        "total": total,
-        "total_pages": math.ceil(total / page_size) if total else 0,
-    }
+# Product listing lives in sephora/products.py.
 
 
 # ----------------------------------------------------------------------------- reviews

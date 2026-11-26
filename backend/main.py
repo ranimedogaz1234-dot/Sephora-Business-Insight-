@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, dashboard  # noqa: E402  (after .env is loaded)
+from sephora import analytics, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -136,17 +136,69 @@ def filters():
 
 
 # ----------------------------------------------------------------------------- products
-@app.get("/api/products")
-def products(
+Price = Annotated[float | None, Query(ge=0, le=100_000)]
+
+
+def product_filters(
     q: SearchText = None,
     category: Name = None,
-    sort: Literal["popular", "rating", "reviews", "price_asc", "price_desc", "name"] = "popular",
+    subcategory: Name = None,
+    brand: Name = None,
+    min_price: Price = None,
+    max_price: Price = None,
+    min_rating: Annotated[float | None, Query(ge=1, le=5)] = None,
+    min_reviews: Annotated[int | None, Query(ge=0, le=1_000_000)] = None,
+    flag: Literal[tuple(catalogue.FLAGS)] | None = None,  # type: ignore[valid-type]
+) -> catalogue.ProductFilters:
+    """Shared, validated product filters (used by the list, the summary and exports)."""
+    ds = get_dataset()
+    _category(ds, category)
+    options = catalogue.product_options(ds)
+    _check(brand, [b["name"] for b in options["brands"]], "brand")
+    _check(subcategory, sorted({s["name"] for s in options["subcategories"]}), "subcategory")
+    if min_price is not None and max_price is not None and min_price > max_price:
+        raise HTTPException(status_code=422, detail="min_price is greater than max_price")
+    return catalogue.ProductFilters(
+        q=q.strip() if q else None,
+        category=category,
+        subcategory=subcategory,
+        brand=brand,
+        min_price=min_price,
+        max_price=max_price,
+        min_rating=min_rating,
+        min_reviews=min_reviews,
+        flag=flag,
+    )
+
+
+ProductFilterParams = Annotated[catalogue.ProductFilters, Depends(product_filters)]
+
+
+@app.get("/api/products")
+def products(
+    filters: ProductFilterParams,
+    sort: Literal[tuple(catalogue.SORTS)] = "popular",  # type: ignore[valid-type]
     page: PageNo = 1,
     page_size: Annotated[int, Query(ge=1, le=50)] = 20,
 ):
-    """Catalogue search (name or brand), category filter, sorting and pagination."""
-    ds = get_dataset()
-    return analytics.list_products(ds, q.strip() if q else None, _category(ds, category), sort, page, page_size)
+    """Catalogue search with brand, category, price, rating, review-count and listing filters.
+
+    ``min_reviews`` uses Sephora's catalogue review count (reviews in this dataset cover
+    Skincare only). Each item carries ``rating_vs_category`` and ``loves_percentile``.
+    """
+    return catalogue.list_products(get_dataset(), filters, sort, page, page_size)
+
+
+@app.get("/api/products/summary")
+def products_summary(filters: ProductFilterParams):
+    """KPIs, price and rating distributions, top brands and highlights for the filtered products."""
+    return catalogue.product_summary(get_dataset(), filters)
+
+
+@app.get("/api/products/options")
+def products_options():
+    """Brands, subcategories, listing flags and the price range for the Products filters."""
+    return catalogue.product_options(get_dataset())
 
 
 # ----------------------------------------------------------------------------- reviews

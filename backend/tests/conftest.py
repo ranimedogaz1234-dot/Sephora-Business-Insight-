@@ -18,6 +18,18 @@ PRODUCTS = [
     ["P4", "Red Lipstick", 2, "Beta", 1500, 4.8, 300, 30.0, "Makeup", "Lip"],
     ["P5", "Shine Oil", 3, "Gamma", 50, "", "", 55.0, "Hair", ""],
 ]
+# Extra catalogue columns per product (P1..P5), appended to the rows above.
+PRODUCT_EXTRA = {
+    "tertiary_category": ["Face Serums", "Moisturizers", "Face Wash", "Lipstick", ""],
+    "sale_price_usd": ["", "", 12.0, "", ""],
+    "limited_edition": [0, 0, 0, 1, 0],
+    "new": [1, 0, 0, 0, 0],
+    "online_only": [0, 1, 0, 0, 1],
+    "out_of_stock": [0, 0, 0, 0, 1],
+    "sephora_exclusive": [1, 1, 0, 0, 0],
+}
+PRODUCT_HEADER = PRODUCT_HEADER + list(PRODUCT_EXTRA)
+PRODUCTS = [row + [values[i] for values in PRODUCT_EXTRA.values()] for i, row in enumerate(PRODUCTS)]
 REVIEW_HEADER = [
     "", "author_id", "rating", "is_recommended", "helpfulness", "total_feedback_count",
     "total_neg_feedback_count", "total_pos_feedback_count", "submission_time", "review_text",

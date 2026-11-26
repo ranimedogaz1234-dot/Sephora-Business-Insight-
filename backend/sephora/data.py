@@ -31,7 +31,7 @@ REVIEW_FILES = (
     "reviews_1250-end.csv",
 )
 FILES = (PRODUCT_FILE, *REVIEW_FILES)
-CACHE_VERSION = 1
+CACHE_VERSION = 2  # bump whenever the prepared columns change
 
 PRODUCT_COLUMNS = {
     "product_id": "string",
@@ -39,11 +39,19 @@ PRODUCT_COLUMNS = {
     "brand_name": "string",
     "primary_category": "string",
     "secondary_category": "string",
+    "tertiary_category": "string",
     "price_usd": "float64",
+    "sale_price_usd": "float64",
     "rating": "float64",
     "reviews": "float64",
     "loves_count": "int64",
+    "limited_edition": "int64",
+    "new": "int64",
+    "online_only": "int64",
+    "out_of_stock": "int64",
+    "sephora_exclusive": "int64",
 }
+PRODUCT_FLAGS = ("limited_edition", "new", "online_only", "out_of_stock", "sephora_exclusive")
 REVIEW_COLUMNS = {
     "author_id": "string",
     "rating": "int64",
@@ -110,6 +118,8 @@ def read_products(path: Path) -> pd.DataFrame:
     p = pd.read_csv(path, usecols=list(PRODUCT_COLUMNS), dtype=PRODUCT_COLUMNS)
     p = p.drop_duplicates("product_id").reset_index(drop=True)
     p["secondary_category"] = p["secondary_category"].fillna("Other")
+    for flag in PRODUCT_FLAGS:  # 0/1 snapshot flags of the listing
+        p[flag] = p[flag].astype(bool)
     return p
 
 
