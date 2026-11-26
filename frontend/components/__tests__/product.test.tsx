@@ -7,6 +7,7 @@ import type { ProductRow } from "@/lib/api";
 const product: ProductRow = {
   product_id: "P1",
   product_name: "Glow Serum",
+  brand_id: 1,
   brand_name: "Alpha",
   category: "Skincare",
   subcategory: "Treatments",

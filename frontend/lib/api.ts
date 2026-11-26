@@ -86,6 +86,7 @@ export type ProductFlag = "new" | "exclusive" | "online_only" | "limited_edition
 export interface ProductRow {
   product_id: string;
   product_name: string;
+  brand_id: number;
   brand_name: string;
   category: string;
   subcategory: string;
@@ -178,6 +179,65 @@ export interface ProductDetails {
   related: ProductRow[];
   same_brand: ProductRow[];
   related_rule: string;
+}
+
+export interface BrandRow {
+  brand_id: number;
+  brand_name: string;
+  products: number;
+  categories: number;
+  main_category: string;
+  median_price: number | null;
+  average_price: number | null;
+  min_price: number | null;
+  max_price: number | null;
+  average_catalogue_rating: number | null;
+  rated_products: number;
+  total_loves: number;
+  catalogue_reviews: number;
+  exclusives: number;
+  new_products: number;
+  /** Rows in the review files; 0 when the brand has no Skincare reviews there. */
+  review_rows: number;
+  reviewed_products: number;
+  average_review_rating: number | null;
+  recommend_rate: number | null;
+  rank_products: number;
+  rank_loves: number;
+  rank_reviews: number | null;
+}
+
+export interface BrandSummary {
+  brands: number;
+  brands_with_reviews: number;
+  median_products: number | null;
+  top10_product_share: number | null;
+  size_distribution: Bucket[];
+  by_products: BrandRow[];
+  by_loves: BrandRow[];
+  by_reviews: BrandRow[];
+  price_vs_rating: { brand_id: number; brand_name: string; median_price: number; average_catalogue_rating: number; products: number }[];
+  scatter_min_rated: number;
+}
+
+export interface BrandDetails {
+  brand: BrandRow;
+  brands_total: number;
+  catalogue_average_rating: number;
+  catalogue_median_price: number;
+  categories: { category: string; subcategory: string; products: number; average_rating: number | null; median_price: number }[];
+  price_quartiles: number[];
+  products: ProductRow[];
+  reviews: {
+    count: number;
+    average_rating: number;
+    recommend_rate: number | null;
+    recommend_answered: number;
+    ratings: RatingBucket[];
+    granularity: "month" | "year";
+    trend: TrendPoint[];
+    top_products: { product_id: string; product_name: string; review_count: number; average_rating: number }[];
+  } | null;
 }
 
 export interface ProductOptions {
@@ -300,6 +360,10 @@ export const api = {
   products: (q: Query) => get<Page<ProductRow>>("/api/products", q),
   productSummary: (q: Query) => get<ProductSummary>("/api/products/summary", q),
   productOptions: () => get<ProductOptions>("/api/products/options"),
+  brands: (q: Query) => get<Page<BrandRow>>("/api/brands", q),
+  brandSummary: (q: Query) => get<BrandSummary>("/api/brands/summary", q),
+  brandOptions: () => get<{ brand_id: number; brand_name: string; products: number }[]>("/api/brands/options"),
+  brand: (id: number) => get<BrandDetails>(`/api/brands/${id}`),
   product: (id: string) => get<ProductDetails>(`/api/products/${encodeURIComponent(id)}`),
   reviewSummary: (q: Query) => get<ReviewSummary>("/api/reviews/summary", q),
   reviews: (q: Query) => get<Page<ReviewRow>>("/api/reviews", q),
