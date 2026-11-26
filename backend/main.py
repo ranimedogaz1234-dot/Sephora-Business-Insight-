@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
-from sephora import analytics, brands, categories as category_tree, customers, dashboard, products as catalogue  # noqa: E402  (after .env is loaded)
+from sephora import analytics, brands, categories as category_tree, customers, dashboard, products as catalogue, reviews as review_data  # noqa: E402  (after .env is loaded)
 from sephora.data import FILES, DatasetUnavailable, dataset_dir, get_dataset, is_loaded  # noqa: E402
 
 log = logging.getLogger("sephora")
@@ -296,31 +296,61 @@ def customer_preferences(attribute: Attribute = "skin_type", subcategory: Name =
 # ----------------------------------------------------------------------------- reviews
 Year = Annotated[int | None, Query(ge=1990, le=2100)]
 Stars = Annotated[int | None, Query(ge=1, le=5)]
+ProductId = Annotated[str | None, Query(pattern=catalogue.PRODUCT_ID)]
 
 
-def _check_review_filters(ds, subcategory: str | None) -> None:
-    options = analytics.filter_options(ds)
-    _check(subcategory, [s["name"] for s in options["review_subcategories"]], "subcategory")
+def review_filters(
+    subcategory: Name = None,
+    year: Year = None,
+    rating: Stars = None,
+    q: Annotated[str | None, Query(min_length=3, max_length=60)] = None,
+    product_id: ProductId = None,
+    brand: Name = None,
+    recommended: Literal["yes", "no", "unknown"] | None = None,
+    skin_type: Name = None,
+    has_text: bool | None = None,
+) -> review_data.ReviewFilters:
+    """Shared, validated review filters (used by the summary, the list and exports)."""
+    ds = get_dataset()
+    _review_subcategory(ds, subcategory)
+    options = review_data.review_options(ds)
+    _check(brand, options["brands"], "brand")
+    _check(skin_type, options["skin_types"], "skin type")
+    return review_data.ReviewFilters(
+        subcategory=subcategory,
+        year=year,
+        rating=rating,
+        q=q.strip() if q and q.strip() else None,
+        product_id=product_id,
+        brand=brand,
+        recommended=recommended,
+        skin_type=skin_type,
+        has_text=has_text,
+    )
+
+
+ReviewFilterParams = Annotated[review_data.ReviewFilters, Depends(review_filters)]
 
 
 @app.get("/api/reviews/summary")
-def review_summary(subcategory: Name = None, year: Year = None, rating: Stars = None):
-    """Review KPIs, rating distribution, trend and top products for the selected filters."""
-    ds = get_dataset()
-    _check_review_filters(ds, subcategory)
-    return analytics.review_summary(ds, subcategory, year, rating)
+def review_summary(filters: ReviewFilterParams):
+    """KPIs, star-rating groups, recommendation split, trend, top products, text length
+    bands, helpfulness and, for a search term, how its mentions compare with the rest."""
+    return review_data.review_summary(get_dataset(), filters)
+
+
+@app.get("/api/reviews/options")
+def review_options():
+    """Brands and skin types that appear in the review files."""
+    return review_data.review_options(get_dataset())
 
 
 @app.get("/api/reviews")
 def reviews(
-    subcategory: Name = None,
-    year: Year = None,
-    rating: Stars = None,
-    sort: Literal["recent", "helpful", "highest", "lowest"] = "recent",
+    filters: ReviewFilterParams,
+    sort: Literal[tuple(review_data.SORTS)] = "recent",  # type: ignore[valid-type]
     page: PageNo = 1,
-    page_size: Annotated[int, Query(ge=1, le=20)] = 6,
+    page_size: Annotated[int, Query(ge=1, le=24)] = 6,
 ):
     """Paginated review texts. Reviewer identifiers are never returned."""
-    ds = get_dataset()
-    _check_review_filters(ds, subcategory)
-    return analytics.list_reviews(ds, subcategory, year, rating, sort, page, page_size)
+    return review_data.list_reviews(get_dataset(), filters, sort, page, page_size)
